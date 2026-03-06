@@ -1,0 +1,30 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "vlogkit"
+version = "0.1.0"
+description = "AI-powered vlog assembly tool — analyze clips, storyboard with LLM, export to NLE"
+requires-python = ">=3.11"
+license = "MIT"
+authors = [{ name = "Bryan" }]
+
+dependencies = [
+    "typer[all]>=0.9",
+    "pydantic>=2.0",
+    "pydantic-settings>=2.0",
+    "faster-whisper>=1.0",
+    "stable-ts>=2.0",
+    "scenedetect[opencv]>=0.6",
+    "opentimelineio>=0.17",
+    "anthropic>=0.40",
+    "ffmpeg-python>=0.2",
+    "rich>=13.0",
+]
+
+[project.scripts]
+vlogkit = "vlogkit.cli:app"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/vlogkit"]
