@@ -6,6 +6,18 @@ and transcripts, then arrange them into a compelling vlog narrative.
 
 You output structured JSON only — no markdown, no explanation outside the JSON."""
 
+DURATION_INSTRUCTION = """
+Target duration: {target_duration:.0f} seconds.
+You MUST set in_point and out_point on each included segment so that the sum of \
+(out_point - in_point) for all included segments is close to {target_duration:.0f}s \
+(within +/- 5%). Exclude clips or trim aggressively to hit this target."""
+
+TEMPLATE_INSTRUCTION = """
+{template_hint}
+
+Follow the section structure above exactly. Name your sections to match the \
+template section names."""
+
 STORYBOARD_PROMPT = """\
 I have {clip_count} raw video clips from "{context}". \
 Analyze the clips below and create a storyboard that arranges them into a \
@@ -20,6 +32,7 @@ Guidelines:
 - Provide a brief rationale for your editing choices
 
 Strategy: {strategy}
+{duration_block}{template_block}
 
 Clips:
 {clips_json}

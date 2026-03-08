@@ -11,7 +11,14 @@ from ..config import Settings
 from ..llm.base import LLMBackend
 from ..llm.claude import ClaudeBackend
 from ..models import ClipAnalysis, Storyboard, StoryboardSection, StoryboardSegment
-from .prompts import STORYBOARD_PROMPT, STRATEGY_HINTS, SYSTEM_PROMPT
+from ..templates import get_template, template_to_prompt_hint
+from .prompts import (
+    DURATION_INSTRUCTION,
+    STORYBOARD_PROMPT,
+    STRATEGY_HINTS,
+    SYSTEM_PROMPT,
+    TEMPLATE_INSTRUCTION,
+)
 from .strategies import chronological_fallback
 
 console = Console()
@@ -85,20 +92,38 @@ def build_storyboard(
     settings: Settings,
     strategy: str = "energy-arc",
     context: str = "a recent trip",
+    target_duration: float | None = None,
+    template_name: str | None = None,
 ) -> Storyboard:
     if not settings.anthropic_api_key:
         console.print("[yellow]No API key found. Using chronological fallback.[/]")
-        return chronological_fallback(analyses)
+        return chronological_fallback(analyses, target_duration=target_duration)
 
     backend: LLMBackend = ClaudeBackend(settings)
     clips_json = _clips_to_json(analyses)
-    strategy_hint = STRATEGY_HINTS.get(strategy, STRATEGY_HINTS["energy-arc"])
+
+    # Build duration block
+    duration_block = ""
+    if target_duration is not None:
+        duration_block = DURATION_INSTRUCTION.format(target_duration=target_duration)
+
+    # Build template block
+    template_block = ""
+    if template_name:
+        tmpl = get_template(template_name)
+        hint = template_to_prompt_hint(tmpl, target_duration or 60.0)
+        template_block = TEMPLATE_INSTRUCTION.format(template_hint=hint)
+        strategy_hint = "See template structure above for section guidance."
+    else:
+        strategy_hint = STRATEGY_HINTS.get(strategy, STRATEGY_HINTS["energy-arc"])
 
     prompt = STORYBOARD_PROMPT.format(
         clip_count=len(analyses),
         context=context,
         strategy=strategy_hint,
         clips_json=clips_json,
+        duration_block=duration_block,
+        template_block=template_block,
     )
 
     console.print("[cyan]Generating storyboard via Claude...[/]")
@@ -106,9 +131,14 @@ def build_storyboard(
 
     try:
         storyboard = _parse_storyboard_response(response, project_root)
+        storyboard.target_duration = target_duration
+        storyboard.template_name = template_name
         console.print(f"[green]Storyboard created: {len(storyboard.sections)} sections[/]")
+        if target_duration:
+            actual = storyboard.included_duration()
+            console.print(f"Target: {target_duration:.0f}s | Actual: {actual:.0f}s")
         return storyboard
     except (json.JSONDecodeError, KeyError) as e:
         console.print(f"[red]Failed to parse LLM response: {e}[/]")
         console.print("[yellow]Falling back to chronological order.[/]")
-        return chronological_fallback(analyses)
+        return chronological_fallback(analyses, target_duration=target_duration)

@@ -83,6 +83,8 @@ class Storyboard(BaseModel):
     title: str = "Untitled Vlog"
     sections: list[StoryboardSection] = Field(default_factory=list)
     total_duration: float = 0.0
+    target_duration: float | None = None
+    template_name: str | None = None
     llm_rationale: str = ""
 
     def included_duration(self) -> float:

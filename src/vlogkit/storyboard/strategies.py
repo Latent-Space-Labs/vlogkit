@@ -5,7 +5,10 @@ from __future__ import annotations
 from ..models import ClipAnalysis, Storyboard, StoryboardSection, StoryboardSegment
 
 
-def chronological_fallback(analyses: list[ClipAnalysis]) -> Storyboard:
+def chronological_fallback(
+    analyses: list[ClipAnalysis],
+    target_duration: float | None = None,
+) -> Storyboard:
     """Simple chronological ordering — used when no API key is available."""
     sorted_clips = sorted(
         analyses,
@@ -26,6 +29,14 @@ def chronological_fallback(analyses: list[ClipAnalysis]) -> Storyboard:
 
     total = sum(a.metadata.duration for a in sorted_clips)
 
+    # If target duration is set and total exceeds it, trim proportionally
+    if target_duration and total > target_duration and total > 0:
+        scale = target_duration / total
+        for seg in segments:
+            duration = seg.out_point - seg.in_point
+            seg.out_point = seg.in_point + duration * scale
+        total = target_duration
+
     return Storyboard(
         title="Untitled Vlog",
         sections=[StoryboardSection(
@@ -34,5 +45,6 @@ def chronological_fallback(analyses: list[ClipAnalysis]) -> Storyboard:
             notes="Auto-generated chronological order. No LLM was used.",
         )],
         total_duration=total,
+        target_duration=target_duration,
         llm_rationale="Fallback: clips ordered by creation time.",
     )
