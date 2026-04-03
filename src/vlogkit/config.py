@@ -24,6 +24,12 @@ class Settings(BaseSettings):
         default=[".mp4", ".mov", ".avi", ".mkv", ".mts", ".m4v", ".webm"]
     )
 
+    # Search (semantic video search via sentrysearch)
+    gemini_api_key: str = ""
+    search_chunk_duration: int = 30
+    search_chunk_overlap: int = 5
+    search_auto_index: bool = True
+
     cache_dir_name: str = ".vlogkit"
     storyboard_filename: str = "storyboard.md"
 
@@ -39,6 +45,11 @@ class Settings(BaseSettings):
 
     def keyframes_dir(self, project_root: Path) -> Path:
         d = self.cache_dir(project_root) / "keyframes"
+        d.mkdir(parents=True, exist_ok=True)
+        return d
+
+    def search_db_dir(self, project_root: Path) -> Path:
+        d = self.cache_dir(project_root) / "search_db"
         d.mkdir(parents=True, exist_ok=True)
         return d
 

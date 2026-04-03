@@ -23,8 +23,22 @@ dependencies = [
     "rich>=13.0",
 ]
 
+[project.optional-dependencies]
+server = [
+    "fastapi>=0.104",
+    "uvicorn[standard]>=0.24",
+    "python-multipart>=0.0.6",
+    "qrcode>=7.0",
+]
+search = [
+    "sentrysearch @ git+https://github.com/ssrajadh/sentrysearch.git",
+]
+
 [project.scripts]
 vlogkit = "vlogkit.cli:app"
+
+[tool.hatch.metadata]
+allow-direct-references = true
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/vlogkit"]
