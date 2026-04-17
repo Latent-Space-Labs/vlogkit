@@ -8,6 +8,9 @@ type Storyboard = components["schemas"]["Storyboard-Output"];
 type StoryboardInput = components["schemas"]["Storyboard-Input"];
 type StoryboardSection = components["schemas"]["StoryboardSection"];
 type StoryboardSegment = components["schemas"]["StoryboardSegment"];
+type SearchHit = components["schemas"]["SearchHit"];
+type SearchResponse = components["schemas"]["SearchResponse"];
+type IndexStatus = components["schemas"]["IndexStatus"];
 
 export class ApiError extends Error {
   constructor(
@@ -81,6 +84,16 @@ export const api = {
       `/projects/${projectId}/storyboard/regenerate`,
       { method: "POST" },
     ),
+  searchClips: (projectId: string, query: string, k = 10) =>
+    request<SearchResponse>(
+      `/projects/${projectId}/search?q=${encodeURIComponent(query)}&k=${k}`,
+    ),
+  buildSearchIndex: (projectId: string) =>
+    request<{ job_id: string }>(`/projects/${projectId}/search/index`, {
+      method: "POST",
+    }),
+  getIndexStatus: (projectId: string) =>
+    request<IndexStatus>(`/projects/${projectId}/search/index`),
 };
 
 export function getMediaUrl(hash: string): string {
@@ -88,4 +101,14 @@ export function getMediaUrl(hash: string): string {
   return `http://127.0.0.1:${apiPort}/media/${hash}?token=${encodeURIComponent(token)}`;
 }
 
-export type { Project, ClipSummary, ErrorDetail, Storyboard, StoryboardSection, StoryboardSegment };
+export type {
+  Project,
+  ClipSummary,
+  ErrorDetail,
+  Storyboard,
+  StoryboardSection,
+  StoryboardSegment,
+  SearchHit,
+  SearchResponse,
+  IndexStatus,
+};
