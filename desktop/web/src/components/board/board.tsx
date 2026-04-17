@@ -1,7 +1,7 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
-import { useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
 import {
   DndContext,
   PointerSensor,
@@ -13,10 +13,12 @@ import { arrayMove } from "@dnd-kit/sortable";
 
 import { ApiError, api, type Storyboard, type StoryboardSegment } from "@/lib/api";
 import { queryKeys } from "@/lib/query-keys";
+import { connectEventStream } from "@/lib/ws";
 import { SectionRow } from "./section-row";
 import { EmptyBoard } from "./empty-board";
 import { useSegmentReorder } from "./use-segment-reorder";
 import { InspectorDrawer } from "./inspector-drawer";
+import { RegenerateButton } from "./regenerate-button";
 
 export function Board({ projectId }: { projectId: string }) {
   const { data, isLoading, error } = useQuery({
@@ -45,6 +47,26 @@ export function Board({ projectId }: { projectId: string }) {
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
   );
+
+  const qc = useQueryClient();
+  const [regenInFlight, setRegenInFlight] = useState(false);
+
+  useEffect(() => {
+    const dc = connectEventStream(projectId, (evt) => {
+      if (evt.type === "storyboard.regen_started") {
+        setRegenInFlight(true);
+      } else if (
+        evt.type === "storyboard.regen_complete" ||
+        evt.type === "storyboard.regen_failed"
+      ) {
+        setRegenInFlight(false);
+        qc.invalidateQueries({
+          queryKey: [...queryKeys.project(projectId), "storyboard"],
+        });
+      }
+    });
+    return dc;
+  }, [projectId, qc]);
 
   function handleDragEnd(evt: DragEndEvent) {
     const { active, over } = evt;
@@ -77,13 +99,16 @@ export function Board({ projectId }: { projectId: string }) {
     <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
       <div className="grid grid-cols-[1fr_320px] gap-6">
         <div>
-          <div className="mb-4">
-            <h2 className="text-2xl font-bold">{data.title}</h2>
-            {data.llm_rationale ? (
-              <p className="text-sm text-[var(--color-muted)] mt-1">
-                {data.llm_rationale}
-              </p>
-            ) : null}
+          <div className="mb-4 flex items-start justify-between gap-4">
+            <div>
+              <h2 className="text-2xl font-bold">{data.title}</h2>
+              {data.llm_rationale ? (
+                <p className="text-sm text-[var(--color-muted)] mt-1">
+                  {data.llm_rationale}
+                </p>
+              ) : null}
+            </div>
+            <RegenerateButton projectId={projectId} inFlight={regenInFlight} />
           </div>
           {sections.map((s, i) => (
             <SectionRow

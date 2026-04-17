@@ -1,0 +1,26 @@
+"use client";
+
+import { useMutation } from "@tanstack/react-query";
+import { api } from "@/lib/api";
+
+export function RegenerateButton({
+  projectId,
+  inFlight,
+}: {
+  projectId: string;
+  inFlight: boolean;
+}) {
+  const mut = useMutation({
+    mutationFn: () => api.regenerateStoryboard(projectId),
+  });
+  const running = mut.isPending || inFlight;
+  return (
+    <button
+      onClick={() => mut.mutate()}
+      disabled={running}
+      className="px-3 py-1.5 rounded-[4px] font-semibold text-sm text-white bg-[var(--color-accent)] hover:bg-[var(--color-accent-strong)] disabled:opacity-60 transition"
+    >
+      {running ? "Regenerating…" : "Regenerate"}
+    </button>
+  );
+}
