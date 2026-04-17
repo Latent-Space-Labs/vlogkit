@@ -39,6 +39,7 @@ def create_router() -> APIRouter:
     )
     def register_project(
         body: RegisterProjectRequest,
+        request: Request,
         registry: ProjectRegistry = Depends(_registry),
     ) -> ProjectEntryResponse:
         folder = Path(body.path)
@@ -51,6 +52,10 @@ def create_router() -> APIRouter:
                 ).model_dump(),
             )
         entry = registry.register(folder)
+        # Populate the clip index so /media can resolve hashes without scanning.
+        from vlogkit.project import Project
+        project = Project(root=folder)
+        request.app.state.clip_index.add_project(entry.id, project)
         return ProjectEntryResponse(**entry.__dict__)
 
     @router.get(
@@ -80,6 +85,7 @@ def create_router() -> APIRouter:
     )
     def forget_project(
         project_id: str,
+        request: Request,
         registry: ProjectRegistry = Depends(_registry),
     ) -> None:
         if not registry.forget(project_id):
@@ -90,5 +96,6 @@ def create_router() -> APIRouter:
                     message=f"Unknown project: {project_id}",
                 ).model_dump(),
             )
+        request.app.state.clip_index.remove_project(project_id)
 
     return router

@@ -8,6 +8,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from vlogkit.project import Project
+from vlogkit.server.clip_index import ClipIndex
 from vlogkit.server.registry import ProjectRegistry
 from vlogkit.server.routes import health, uploads
 from vlogkit.server.routes import clips as clips_routes
@@ -56,6 +57,7 @@ def create_desktop_app(registry_path: Path, token: str) -> FastAPI:
     )
 
     app.state.registry = ProjectRegistry(registry_path)
+    app.state.clip_index = ClipIndex()
     app.state.token = token
 
     app.include_router(health.create_router())

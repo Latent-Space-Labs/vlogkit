@@ -100,29 +100,18 @@ def create_media_router() -> APIRouter:
     def stream_media(
         request: Request,
         clip_hash: str,
-        registry: ProjectRegistry = Depends(_registry),
     ):
         from vlogkit.server.media import stream_file
-        # FIXME(plan-3): replace linear scan with sha256→path index built during analyze
-        # Search across all registered projects — the hash is globally unique.
-        import hashlib
-        for entry in registry.list():
-            project = Project(root=Path(entry.path))
-            for c in project.scan_clips():
-                hasher = hashlib.sha256()
-                with c.open("rb") as fh:
-                    for chunk in iter(lambda: fh.read(1024 * 1024), b""):
-                        hasher.update(chunk)
-                h_full = hasher.hexdigest()
-                # Accept both 16-char prefix (current ClipSummary.sha256 shape) and 64-char full.
-                if clip_hash in (h_full, h_full[:16]):
-                    return stream_file(request, c)
-        raise HTTPException(
-            status_code=404,
-            detail=ErrorDetail(
-                code="media_not_found",
-                message=f"No clip with hash {clip_hash} found in any registered project",
-            ).model_dump(),
-        )
+        index = request.app.state.clip_index
+        path = index.resolve(clip_hash)
+        if path is None:
+            raise HTTPException(
+                status_code=404,
+                detail=ErrorDetail(
+                    code="media_not_found",
+                    message=f"No clip with hash {clip_hash} found in any registered project",
+                ).model_dump(),
+            )
+        return stream_file(request, path)
 
     return router
