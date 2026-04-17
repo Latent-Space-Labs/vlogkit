@@ -4,6 +4,7 @@ import { useSearchParams, useRouter } from "next/navigation";
 import { Suspense } from "react";
 import { ClipsTab } from "@/components/clips/clip-list";
 import { Board } from "@/components/board/board";
+import { SearchPanel } from "@/components/search/search-panel";
 
 function ProjectInner() {
   const params = useSearchParams();
@@ -51,14 +52,8 @@ function ProjectInner() {
 
       {tab === "clips" && <ClipsTab projectId={id} />}
       {tab === "board" && <Board projectId={id} />}
-      {tab === "search" && <Placeholder name="Semantic search — Plan 5" />}
+      {tab === "search" && <SearchPanel projectId={id} />}
     </main>
-  );
-}
-
-function Placeholder({ name }: { name: string }) {
-  return (
-    <p className="text-[var(--color-muted)] py-16 text-center">{name}</p>
   );
 }
 
