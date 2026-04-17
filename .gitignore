@@ -9,3 +9,9 @@ build/
 .venv/
 .env
 .vlogkit/
+
+# desktop app
+desktop/**/node_modules/
+desktop/web/.next/
+desktop/web/out/
+desktop/electron/out/

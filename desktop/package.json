@@ -1,0 +1,16 @@
+{
+  "name": "vlogkit-desktop",
+  "version": "0.1.0",
+  "private": true,
+  "workspaces": ["electron", "web"],
+  "scripts": {
+    "dev": "concurrently -k -n web,electron -c auto \"npm run dev -w web\" \"npm run dev -w electron\"",
+    "build": "npm run build -w web && npm run build -w electron",
+    "gen:api": "bash scripts/gen-api-types.sh",
+    "typecheck": "npm run typecheck -w web && npm run typecheck -w electron"
+  },
+  "devDependencies": {
+    "concurrently": "^9.0.0",
+    "typescript": "^5.6.0"
+  }
+}
