@@ -1,4 +1,4 @@
-import { spawn, type ChildProcess } from "node:child_process";
+import { spawn, spawnSync, type ChildProcess } from "node:child_process";
 import { createServer } from "node:net";
 import { randomBytes } from "node:crypto";
 import { homedir } from "node:os";
@@ -40,15 +40,30 @@ async function waitForHealth(port: number, deadlineMs = 15_000): Promise<void> {
   throw new Error(`sidecar on port ${port} never became ready`);
 }
 
+function resolvePython(preferred: string): string {
+  // If the caller specified something other than "python", trust them.
+  if (preferred !== "python") return preferred;
+  // Try "python" then "python3", pick the first that resolves.
+  for (const candidate of ["python", "python3"]) {
+    const probe = spawnSync(candidate, ["--version"], { stdio: "ignore" });
+    if (probe.status === 0) return candidate;
+  }
+  throw new Error(
+    "Could not find 'python' or 'python3' on PATH. " +
+    "Set VLOGKIT_PYTHON to an explicit interpreter path."
+  );
+}
+
 export async function startSidecar(
   pythonBin: string = "python",
 ): Promise<SidecarHandle> {
+  const resolvedPython = resolvePython(pythonBin);
   const port = await freePort();
   const token = randomBytes(24).toString("base64url");
   const registry = join(homedir(), ".vlogkit", "projects.json");
 
   const proc = spawn(
-    pythonBin,
+    resolvedPython,
     ["-m", "vlogkit.server",
       "--port", String(port),
       "--registry", registry,
