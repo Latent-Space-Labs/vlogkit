@@ -74,10 +74,9 @@ def test_media_open_ended_range(
 def test_media_unknown_hash_returns_404(
     desktop_client: TestClient, auth_headers: dict[str, str]
 ) -> None:
-    resp = desktop_client.get(
-        f"/media/{'0' * 64}", headers=auth_headers
-    )
+    resp = desktop_client.get(f"/media/{'0' * 64}", headers=auth_headers)
     assert resp.status_code == 404
+    assert resp.json()["detail"]["code"] == "media_not_found"
 
 
 def test_media_requires_auth(

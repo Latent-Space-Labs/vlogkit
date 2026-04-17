@@ -35,6 +35,7 @@ def create_router() -> APIRouter:
         "",
         response_model=ProjectEntryResponse,
         status_code=status.HTTP_201_CREATED,
+        responses={404: {"model": ErrorDetail}},
     )
     def register_project(
         body: RegisterProjectRequest,
@@ -52,7 +53,11 @@ def create_router() -> APIRouter:
         entry = registry.register(folder)
         return ProjectEntryResponse(**entry.__dict__)
 
-    @router.get("/{project_id}", response_model=ProjectEntryResponse)
+    @router.get(
+        "/{project_id}",
+        response_model=ProjectEntryResponse,
+        responses={404: {"model": ErrorDetail}},
+    )
     def get_project(
         project_id: str,
         registry: ProjectRegistry = Depends(_registry),
@@ -68,7 +73,11 @@ def create_router() -> APIRouter:
             )
         return ProjectEntryResponse(**entry.__dict__)
 
-    @router.delete("/{project_id}", status_code=status.HTTP_204_NO_CONTENT)
+    @router.delete(
+        "/{project_id}",
+        status_code=status.HTTP_204_NO_CONTENT,
+        responses={404: {"model": ErrorDetail}},
+    )
     def forget_project(
         project_id: str,
         registry: ProjectRegistry = Depends(_registry),

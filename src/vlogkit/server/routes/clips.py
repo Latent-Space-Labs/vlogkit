@@ -48,7 +48,11 @@ def create_router() -> APIRouter:
         dependencies=[Depends(require_token)],
     )
 
-    @router.get("/clips", response_model=list[ClipSummary])
+    @router.get(
+        "/clips",
+        response_model=list[ClipSummary],
+        responses={404: {"model": ErrorDetail}},
+    )
     def list_clips(
         project_id: str,
         registry: ProjectRegistry = Depends(_registry),
@@ -57,7 +61,11 @@ def create_router() -> APIRouter:
         clips = project.scan_clips()
         return [_summarize_clip(project, c) for c in clips]
 
-    @router.get("/clips/{clip_hash}", response_model=ClipSummary)
+    @router.get(
+        "/clips/{clip_hash}",
+        response_model=ClipSummary,
+        responses={404: {"model": ErrorDetail}},
+    )
     def get_clip(
         project_id: str,
         clip_hash: str,
@@ -85,7 +93,10 @@ def create_media_router() -> APIRouter:
         dependencies=[Depends(require_token)],
     )
 
-    @router.get("/media/{clip_hash}")
+    @router.get(
+        "/media/{clip_hash}",
+        responses={404: {"model": ErrorDetail}},
+    )
     def stream_media(
         request: Request,
         clip_hash: str,
@@ -106,6 +117,12 @@ def create_media_router() -> APIRouter:
                 # Accept both 16-char prefix (current ClipSummary.sha256 shape) and 64-char full.
                 if clip_hash in (h_full, h_full[:16]):
                     return stream_file(request, c)
-        raise HTTPException(status_code=404, detail="media_not_found")
+        raise HTTPException(
+            status_code=404,
+            detail=ErrorDetail(
+                code="media_not_found",
+                message=f"No clip with hash {clip_hash} found in any registered project",
+            ).model_dump(),
+        )
 
     return router

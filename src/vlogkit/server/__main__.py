@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+import os
 from pathlib import Path
 
 from vlogkit.server.app import run_desktop_server
@@ -10,7 +11,12 @@ from vlogkit.server.app import run_desktop_server
 def main() -> None:
     parser = argparse.ArgumentParser(prog="python -m vlogkit.server")
     parser.add_argument("--port", type=int, required=True)
-    parser.add_argument("--token", type=str, required=True)
+    parser.add_argument(
+        "--token",
+        type=str,
+        default=os.environ.get("VLOGKIT_TOKEN"),
+        help="Bearer token. Falls back to VLOGKIT_TOKEN env var.",
+    )
     parser.add_argument(
         "--registry",
         type=Path,
@@ -18,6 +24,9 @@ def main() -> None:
     )
     parser.add_argument("--bind", type=str, default="127.0.0.1")
     args = parser.parse_args()
+
+    if not args.token:
+        parser.error("--token or VLOGKIT_TOKEN env var required")
 
     run_desktop_server(
         registry_path=args.registry,
