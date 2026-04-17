@@ -8,7 +8,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from vlogkit.project import Project
-from vlogkit.server.routes import uploads
+from vlogkit.server.routes import health, uploads
 
 
 def create_app(project: Project, token: str) -> FastAPI:
@@ -31,6 +31,7 @@ def create_app(project: Project, token: str) -> FastAPI:
     app.state.project = project
     app.state.token = token
 
+    app.include_router(health.create_router())
     app.include_router(uploads.create_router(project))
 
     return app
