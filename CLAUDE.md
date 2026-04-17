@@ -30,6 +30,7 @@ vlogkit index [-p path]      # Build semantic search index (requires [search] de
 vlogkit search "query"       # Search clips by visual content (e.g. "sunset over bridge")
 vlogkit search-stats         # Show search index info
 vlogkit serve [path]         # Start upload server for companion app (port 8420)
+vlogkit server [--port N] [--registry PATH]   # Desktop-mode server (used by the desktop shell)
 vlogkit status               # Show project summary
 ```
 
@@ -43,7 +44,7 @@ vlogkit status               # Show project summary
 - **Analysis** (`analyze/`): `pipeline.py` orchestrates per-clip analysis. `metadata.py` extracts via ffprobe. `transcribe.py` uses faster-whisper. `scenes.py` detects scene cuts. `vision.py` describes keyframes via Claude vision. `audio.py` and `motion.py` do audio/motion analysis. Results cached as JSON in `.vlogkit/clips/`
 - **LLM** (`llm/`): `LLMBackend` Protocol with `ClaudeBackend` and `OpenAIBackend` implementations. Falls back to chronological ordering when no API key is set
 - **Search** (`search/`): Semantic video search via `sentrysearch` dependency. `indexer.py` chunks clips and embeds via Gemini API into per-project ChromaDB. `query.py` runs natural language queries against the index. Auto-indexes during `analyze` if enabled. Requires `[search]` optional deps
-- **Server** (`server.py`): FastAPI upload server for companion app. Streams uploads with SHA-256 integrity verification. Requires `[server]` optional deps
+- **Server** (`server/`): FastAPI package with app factory, bearer-token auth, project registry, and route modules (health, projects, clips, media, uploads). Two entrypoints: `create_app` (single-project upload mode used by `vlogkit serve`) and `create_desktop_app` (multi-project desktop mode used by `vlogkit server` / `python -m vlogkit.server`). Requires no optional extras — FastAPI and uvicorn are core deps.
 - **Storyboard** (`storyboard/`): `builder.py` sends clip analyses to Claude, parses JSON response into `Storyboard`. `strategies.py` has non-LLM fallbacks. `prompts.py` has prompt templates
 - **Interactive** (`interactive/markdown.py`): Bidirectional Storyboard ↔ Markdown conversion. Users edit `storyboard.md` then changes are parsed back
 - **Export** (`export/`): Converts `Storyboard` → OpenTimelineIO `Timeline` → output format (FCPXML, EDL, Premiere XML, OTIO)
