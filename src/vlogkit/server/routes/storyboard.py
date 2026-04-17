@@ -1,19 +1,27 @@
 """/projects/{id}/storyboard CRUD."""
 from __future__ import annotations
 
+import asyncio
+import threading
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 
 from vlogkit.models import Storyboard
 from vlogkit.project import Project
+from vlogkit.server import jobs as jobs_module
 from vlogkit.server.auth import require_token
 from vlogkit.server.registry import ProjectRegistry
 from vlogkit.server.schemas import ErrorDetail
+from vlogkit.server.ws import WsBroker
 
 
 def _registry(request: Request) -> ProjectRegistry:
     return request.app.state.registry
+
+
+def _broker(request: Request) -> WsBroker:
+    return request.app.state.ws_broker
 
 
 def _load_project(registry: ProjectRegistry, project_id: str) -> Project:
@@ -72,5 +80,32 @@ def create_router() -> APIRouter:
         project.cache_dir.mkdir(parents=True, exist_ok=True)
         project.save_storyboard(storyboard)
         return storyboard
+
+    @router.post(
+        "/storyboard/regenerate",
+        status_code=status.HTTP_202_ACCEPTED,
+        responses={404: {"model": ErrorDetail}},
+    )
+    def regenerate(
+        project_id: str,
+        registry: ProjectRegistry = Depends(_registry),
+        broker: WsBroker = Depends(_broker),
+    ) -> dict[str, str]:
+        project = _load_project(registry, project_id)
+        job_id = jobs_module.new_job_id()
+
+        def run_in_thread() -> None:
+            asyncio.run(
+                jobs_module.run_regenerate_job(
+                    broker, project_id, project, job_id
+                )
+            )
+
+        threading.Thread(
+            target=run_in_thread,
+            daemon=True,
+            name=f"regen-{job_id[:8]}",
+        ).start()
+        return {"job_id": job_id}
 
     return router

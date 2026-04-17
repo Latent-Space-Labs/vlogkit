@@ -62,10 +62,39 @@ class AnalyzeComplete(BaseModel):
     duration_s: float
 
 
-AnalyzeEvent = Union[
+class StoryboardRegenStarted(BaseModel):
+    type: Literal["storyboard.regen_started"] = "storyboard.regen_started"
+    job_id: str
+
+
+class StoryboardRegenToken(BaseModel):
+    type: Literal["storyboard.regen_token"] = "storyboard.regen_token"
+    token: str
+
+
+class StoryboardRegenComplete(BaseModel):
+    type: Literal["storyboard.regen_complete"] = "storyboard.regen_complete"
+    job_id: str
+    storyboard: dict
+
+
+class StoryboardRegenFailed(BaseModel):
+    type: Literal["storyboard.regen_failed"] = "storyboard.regen_failed"
+    job_id: str
+    error: str
+
+
+BoardEvent = Union[
     AnalyzeStarted,
     AnalyzeProgress,
     AnalyzeClipDone,
     AnalyzeClipFailed,
     AnalyzeComplete,
+    StoryboardRegenStarted,
+    StoryboardRegenToken,
+    StoryboardRegenComplete,
+    StoryboardRegenFailed,
 ]
+
+# Back-compat alias — existing imports of AnalyzeEvent keep working:
+AnalyzeEvent = BoardEvent

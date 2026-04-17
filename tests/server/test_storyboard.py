@@ -118,3 +118,61 @@ def test_storyboard_requires_auth(
         ).status_code
         == 401
     )
+
+
+def test_post_regenerate_starts_job(
+    desktop_client: TestClient,
+    auth_headers: dict[str, str],
+    registered: str,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from vlogkit.server import jobs
+
+    async def fake_run(broker, project_id, project, job_id, **kwargs):
+        from vlogkit.server.schemas import (
+            StoryboardRegenComplete,
+            StoryboardRegenStarted,
+        )
+        await broker.publish(
+            project_id, StoryboardRegenStarted(job_id=job_id)
+        )
+        await broker.publish(
+            project_id,
+            StoryboardRegenComplete(
+                job_id=job_id,
+                storyboard={
+                    "title": "Stubbed",
+                    "sections": [],
+                    "total_duration": 0.0,
+                    "llm_rationale": "",
+                },
+            ),
+        )
+
+    monkeypatch.setattr(jobs, "run_regenerate_job", fake_run)
+
+    resp = desktop_client.post(
+        f"/projects/{registered}/storyboard/regenerate",
+        headers=auth_headers,
+    )
+    assert resp.status_code == 202
+    assert "job_id" in resp.json()
+
+
+def test_regenerate_unknown_project_404(
+    desktop_client: TestClient, auth_headers: dict[str, str]
+) -> None:
+    resp = desktop_client.post(
+        "/projects/deadbeefdeadbeef/storyboard/regenerate",
+        headers=auth_headers,
+    )
+    assert resp.status_code == 404
+
+
+def test_regenerate_requires_auth(
+    desktop_client: TestClient, registered: str
+) -> None:
+    resp = desktop_client.post(
+        f"/projects/{registered}/storyboard/regenerate"
+    )
+    assert resp.status_code == 401

@@ -74,3 +74,48 @@ async def run_analyze_job(
             duration_s=time.monotonic() - started,
         ),
     )
+
+
+async def run_regenerate_job(
+    broker: WsBroker,
+    project_id: str,
+    project: Project,
+    job_id: str,
+    strategy: str = "chronological",
+    context: str = "",
+) -> None:
+    """Regenerate the project's storyboard via the LLM builder."""
+    from vlogkit.server.schemas import (
+        StoryboardRegenComplete,
+        StoryboardRegenFailed,
+        StoryboardRegenStarted,
+    )
+
+    await broker.publish(
+        project_id, StoryboardRegenStarted(job_id=job_id)
+    )
+    try:
+        from vlogkit.storyboard.builder import build_storyboard
+
+        analyses = project.load_all_analyses()
+        sb = await asyncio.to_thread(
+            build_storyboard,
+            analyses,
+            project.root,
+            project.settings,
+            strategy,
+            context,
+        )
+        await asyncio.to_thread(project.save_storyboard, sb)
+        await broker.publish(
+            project_id,
+            StoryboardRegenComplete(
+                job_id=job_id,
+                storyboard=sb.model_dump(mode="json"),
+            ),
+        )
+    except Exception as exc:  # noqa: BLE001 — surface any failure back to client
+        await broker.publish(
+            project_id,
+            StoryboardRegenFailed(job_id=job_id, error=str(exc)),
+        )
