@@ -1,8 +1,6 @@
 """Regression tests for the upload endpoint (ported from legacy server.py)."""
 from __future__ import annotations
 
-from pathlib import Path
-
 from fastapi.testclient import TestClient
 
 

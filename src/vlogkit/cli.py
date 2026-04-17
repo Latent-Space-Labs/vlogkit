@@ -166,13 +166,8 @@ def serve(
         console.print("[yellow]No vlogkit project found — initializing...[/]")
         project.init()
 
-    try:
-        from .server import run_server
-        from .server.app import get_lan_ip
-    except ImportError:
-        console.print("[red]Server dependencies not installed. Run:[/]")
-        console.print("  pip install -e '.[dev]'")
-        raise typer.Exit(1)
+    from .server import run_server
+    from .server.app import get_lan_ip
 
     token = secrets.token_urlsafe(24)
     lan_ip = get_lan_ip()
