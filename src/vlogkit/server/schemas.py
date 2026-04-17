@@ -98,3 +98,23 @@ BoardEvent = Union[
 
 # Back-compat alias — existing imports of AnalyzeEvent keep working:
 AnalyzeEvent = BoardEvent
+
+
+class SearchHit(BaseModel):
+    clip_filename: str
+    clip_sha256: str | None = None
+    chunk_start: float
+    chunk_end: float
+    score: float
+    snippet: str = ""
+
+
+class SearchResponse(BaseModel):
+    query: str
+    hits: list[SearchHit]
+
+
+class IndexStatus(BaseModel):
+    indexed: int
+    total: int
+    ready: bool
