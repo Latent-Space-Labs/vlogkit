@@ -159,6 +159,8 @@ def serve(
     host: Annotated[str, typer.Option("--host", help="Bind address")] = "0.0.0.0",
 ):
     """Start upload server for companion app."""
+    import secrets
+
     project = _get_project(path)
     if not project.is_initialized():
         console.print("[yellow]No vlogkit project found — initializing...[/]")
@@ -166,12 +168,33 @@ def serve(
 
     try:
         from .server import run_server
+        from .server.app import get_lan_ip
     except ImportError:
         console.print("[red]Server dependencies not installed. Run:[/]")
-        console.print("  pip install -e '.[server]'")
+        console.print("  pip install -e '.[dev]'")
         raise typer.Exit(1)
 
-    run_server(project, host=host, port=port)
+    token = secrets.token_urlsafe(24)
+    lan_ip = get_lan_ip()
+    url = f"http://{lan_ip}:{port}"
+
+    console.print("\n[bold green]vlogkit upload server[/]")
+    console.print(f"Project: {project.root}")
+    console.print(f"Listening on: {url}")
+    console.print(f"[dim]Auth token:[/] {token}\n")
+
+    # Show QR code if qrcode is available
+    try:
+        import qrcode  # type: ignore
+        qr = qrcode.QRCode(box_size=1, border=1)
+        qr.add_data(url)
+        qr.make()
+        qr.print_ascii(invert=True)
+        console.print()
+    except ImportError:
+        console.print("[dim](install qrcode for QR display: pip install qrcode)[/]\n")
+
+    run_server(project=project, token=token, host=host, port=port)
 
 
 def _fmt_time(seconds: float) -> str:

@@ -21,17 +21,20 @@ dependencies = [
     "anthropic>=0.40",
     "ffmpeg-python>=0.2",
     "rich>=13.0",
-]
-
-[project.optional-dependencies]
-server = [
     "fastapi>=0.104",
     "uvicorn[standard]>=0.24",
     "python-multipart>=0.0.6",
     "qrcode>=7.0",
 ]
+
+[project.optional-dependencies]
 search = [
     "sentrysearch @ git+https://github.com/ssrajadh/sentrysearch.git",
+]
+dev = [
+    "pytest>=7.0",
+    "pytest-asyncio>=0.23",
+    "httpx>=0.27",
 ]
 
 [project.scripts]
