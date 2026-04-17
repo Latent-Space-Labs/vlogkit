@@ -9,5 +9,11 @@ contextBridge.exposeInMainWorld("vlogkit", bridge);
 
 const ipc: VlogkitIPC = {
   openFolder: () => ipcRenderer.invoke("vlogkit:openFolder"),
+  saveFile: (opts) => ipcRenderer.invoke("vlogkit:saveFile", opts),
 };
 contextBridge.exposeInMainWorld("vlogkitOpenFolder", ipc.openFolder);
+contextBridge.exposeInMainWorld(
+  "vlogkitSaveFile",
+  (opts: { defaultName: string; filters?: { name: string; extensions: string[] }[] }) =>
+    ipcRenderer.invoke("vlogkit:saveFile", opts),
+);

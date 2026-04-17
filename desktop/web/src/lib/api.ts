@@ -11,6 +11,9 @@ type StoryboardSegment = components["schemas"]["StoryboardSegment"];
 type SearchHit = components["schemas"]["SearchHit"];
 type SearchResponse = components["schemas"]["SearchResponse"];
 type IndexStatus = components["schemas"]["IndexStatus"];
+type ExportRequest = components["schemas"]["ExportRequest"];
+type ExportResponse = components["schemas"]["ExportResponse"];
+type ExportFormat = ExportRequest["format"];
 
 export class ApiError extends Error {
   constructor(
@@ -94,6 +97,11 @@ export const api = {
     }),
   getIndexStatus: (projectId: string) =>
     request<IndexStatus>(`/projects/${projectId}/search/index`),
+  exportStoryboard: (projectId: string, req: ExportRequest) =>
+    request<ExportResponse>(`/projects/${projectId}/export`, {
+      method: "POST",
+      body: JSON.stringify(req),
+    }),
 };
 
 export function getMediaUrl(hash: string): string {
@@ -111,4 +119,7 @@ export type {
   SearchHit,
   SearchResponse,
   IndexStatus,
+  ExportRequest,
+  ExportResponse,
+  ExportFormat,
 };

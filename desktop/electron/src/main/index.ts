@@ -21,6 +21,24 @@ async function bootstrap() {
     return result.filePaths[0];
   });
 
+  ipcMain.handle(
+    "vlogkit:saveFile",
+    async (
+      _,
+      opts: {
+        defaultName: string;
+        filters?: { name: string; extensions: string[] }[];
+      },
+    ) => {
+      const result = await dialog.showSaveDialog({
+        defaultPath: opts.defaultName,
+        filters: opts.filters,
+      });
+      if (result.canceled || !result.filePath) return null;
+      return result.filePath;
+    },
+  );
+
   const devUrl = process.env.VLOGKIT_DEV_URL; // set by dev script
   createWindow({
     port: sidecar.port,
