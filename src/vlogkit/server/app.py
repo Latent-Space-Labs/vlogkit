@@ -14,6 +14,7 @@ from vlogkit.server.routes import health, uploads
 from vlogkit.server.routes import analyze as analyze_routes
 from vlogkit.server.routes import clips as clips_routes
 from vlogkit.server.routes import projects as projects_routes
+from vlogkit.server.routes import storyboard as storyboard_routes
 from vlogkit.server.ws import WsBroker
 
 
@@ -68,6 +69,7 @@ def create_desktop_app(registry_path: Path, token: str) -> FastAPI:
     app.include_router(clips_routes.create_router())
     app.include_router(clips_routes.create_media_router())
     app.include_router(analyze_routes.create_router())
+    app.include_router(storyboard_routes.create_router())
 
     return app
 

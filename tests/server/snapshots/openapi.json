@@ -136,6 +136,126 @@
         "title": "RegisterProjectRequest",
         "type": "object"
       },
+      "Storyboard-Input": {
+        "properties": {
+          "llm_rationale": {
+            "default": "",
+            "title": "Llm Rationale",
+            "type": "string"
+          },
+          "sections": {
+            "items": {
+              "$ref": "#/components/schemas/StoryboardSection"
+            },
+            "title": "Sections",
+            "type": "array"
+          },
+          "title": {
+            "default": "Untitled Vlog",
+            "title": "Title",
+            "type": "string"
+          },
+          "total_duration": {
+            "default": 0.0,
+            "title": "Total Duration",
+            "type": "number"
+          }
+        },
+        "title": "Storyboard",
+        "type": "object"
+      },
+      "Storyboard-Output": {
+        "properties": {
+          "llm_rationale": {
+            "default": "",
+            "title": "Llm Rationale",
+            "type": "string"
+          },
+          "sections": {
+            "items": {
+              "$ref": "#/components/schemas/StoryboardSection"
+            },
+            "title": "Sections",
+            "type": "array"
+          },
+          "title": {
+            "default": "Untitled Vlog",
+            "title": "Title",
+            "type": "string"
+          },
+          "total_duration": {
+            "default": 0.0,
+            "title": "Total Duration",
+            "type": "number"
+          }
+        },
+        "title": "Storyboard",
+        "type": "object"
+      },
+      "StoryboardSection": {
+        "properties": {
+          "notes": {
+            "default": "",
+            "title": "Notes",
+            "type": "string"
+          },
+          "segments": {
+            "items": {
+              "$ref": "#/components/schemas/StoryboardSegment"
+            },
+            "title": "Segments",
+            "type": "array"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "title"
+        ],
+        "title": "StoryboardSection",
+        "type": "object"
+      },
+      "StoryboardSegment": {
+        "properties": {
+          "clip_path": {
+            "format": "path",
+            "title": "Clip Path",
+            "type": "string"
+          },
+          "in_point": {
+            "default": 0.0,
+            "title": "In Point",
+            "type": "number"
+          },
+          "include": {
+            "default": true,
+            "title": "Include",
+            "type": "boolean"
+          },
+          "label": {
+            "default": "",
+            "title": "Label",
+            "type": "string"
+          },
+          "out_point": {
+            "default": 0.0,
+            "title": "Out Point",
+            "type": "number"
+          },
+          "transition": {
+            "default": "",
+            "title": "Transition",
+            "type": "string"
+          }
+        },
+        "required": [
+          "clip_path"
+        ],
+        "title": "StoryboardSegment",
+        "type": "object"
+      },
       "ValidationError": {
         "properties": {
           "ctx": {
@@ -750,6 +870,150 @@
         "summary": "Get Clip",
         "tags": [
           "clips"
+        ]
+      }
+    },
+    "/projects/{project_id}/storyboard": {
+      "get": {
+        "operationId": "get_storyboard_projects__project_id__storyboard_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Storyboard-Output"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDetail"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Storyboard",
+        "tags": [
+          "storyboard"
+        ]
+      },
+      "put": {
+        "operationId": "put_storyboard_projects__project_id__storyboard_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Storyboard-Input"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Storyboard-Output"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDetail"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Put Storyboard",
+        "tags": [
+          "storyboard"
         ]
       }
     }
