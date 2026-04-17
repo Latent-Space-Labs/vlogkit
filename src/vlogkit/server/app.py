@@ -88,3 +88,16 @@ def run_server(
 
     app = create_app(project=project, token=token)
     uvicorn.run(app, host=host, port=port, log_level="info")
+
+
+def run_desktop_server(
+    registry_path: Path,
+    token: str,
+    host: str = "127.0.0.1",
+    port: int = 0,
+) -> None:
+    """Run the desktop-mode server (used by Electron sidecar)."""
+    import uvicorn
+
+    app = create_desktop_app(registry_path=registry_path, token=token)
+    uvicorn.run(app, host=host, port=port, log_level="warning")

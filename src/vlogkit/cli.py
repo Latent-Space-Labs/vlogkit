@@ -192,6 +192,25 @@ def serve(
     run_server(project=project, token=token, host=host, port=port)
 
 
+@app.command("server")
+def server_cmd(
+    port: int = 8421,
+    registry: Path = typer.Option(
+        Path.home() / ".vlogkit" / "projects.json",
+        "--registry",
+    ),
+) -> None:
+    """Start the desktop-mode server (for the Electron shell or dev)."""
+    import secrets
+
+    from vlogkit.server.app import run_desktop_server
+
+    token = secrets.token_urlsafe(24)
+    typer.echo(f"Auth token: {token}")
+    typer.echo(f"Port: {port}")
+    run_desktop_server(registry_path=registry, token=token, port=port)
+
+
 def _fmt_time(seconds: float) -> str:
     """Format seconds as MM:SS."""
     m, s = divmod(int(seconds), 60)
