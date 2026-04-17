@@ -1,0 +1,76 @@
+"""Analyze job runner — wraps vlogkit.analyze.pipeline with event emission."""
+from __future__ import annotations
+
+import asyncio
+import time
+import uuid
+
+from vlogkit.project import Project
+from vlogkit.server.schemas import (
+    AnalyzeClipDone,
+    AnalyzeClipFailed,
+    AnalyzeComplete,
+    AnalyzeStarted,
+)
+from vlogkit.server.ws import WsBroker
+
+
+def new_job_id() -> str:
+    return uuid.uuid4().hex
+
+
+async def run_analyze_job(
+    broker: WsBroker,
+    project_id: str,
+    project: Project,
+    job_id: str,
+) -> None:
+    """Run analyze on all clips in project, emitting events.
+
+    Per-clip events are emitted because ``vlogkit.analyze.pipeline.analyze_clip``
+    is a per-clip function. Cached analyses (hash match) are still reported as
+    ``analyze.clip_done`` so the UI sees one event per clip.
+    """
+    clips = project.scan_clips()
+    started = time.monotonic()
+    await broker.publish(
+        project_id,
+        AnalyzeStarted(job_id=job_id, clip_count=len(clips)),
+    )
+
+    # Deferred import — faster-whisper/scenedetect are heavy; don't pay the
+    # cost on every server request. Only imported when an analyze job runs.
+    from vlogkit.analyze.pipeline import analyze_clip
+
+    for clip in clips:
+        try:
+            cached = project.load_analysis(clip)
+            if cached is not None:
+                analysis = cached
+            else:
+                # Wrap blocking work in to_thread so the event loop keeps running
+                # (other WS connections, incoming HTTP, etc.).
+                analysis = await asyncio.to_thread(
+                    analyze_clip, clip, project.settings
+                )
+                await asyncio.to_thread(project.save_analysis, analysis)
+            await broker.publish(
+                project_id,
+                AnalyzeClipDone(
+                    clip_filename=clip.name,
+                    analysis=analysis.model_dump(mode="json"),
+                ),
+            )
+        except Exception as e:  # noqa: BLE001 — surface any failure per-clip
+            await broker.publish(
+                project_id,
+                AnalyzeClipFailed(clip_filename=clip.name, error=str(e)),
+            )
+
+    await broker.publish(
+        project_id,
+        AnalyzeComplete(
+            job_id=job_id,
+            duration_s=time.monotonic() - started,
+        ),
+    )

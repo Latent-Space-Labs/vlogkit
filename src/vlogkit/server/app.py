@@ -11,8 +11,10 @@ from vlogkit.project import Project
 from vlogkit.server.clip_index import ClipIndex
 from vlogkit.server.registry import ProjectRegistry
 from vlogkit.server.routes import health, uploads
+from vlogkit.server.routes import analyze as analyze_routes
 from vlogkit.server.routes import clips as clips_routes
 from vlogkit.server.routes import projects as projects_routes
+from vlogkit.server.ws import WsBroker
 
 
 def create_app(project: Project, token: str) -> FastAPI:
@@ -58,12 +60,14 @@ def create_desktop_app(registry_path: Path, token: str) -> FastAPI:
 
     app.state.registry = ProjectRegistry(registry_path)
     app.state.clip_index = ClipIndex()
+    app.state.ws_broker = WsBroker()
     app.state.token = token
 
     app.include_router(health.create_router())
     app.include_router(projects_routes.create_router())
     app.include_router(clips_routes.create_router())
     app.include_router(clips_routes.create_media_router())
+    app.include_router(analyze_routes.create_router())
 
     return app
 
