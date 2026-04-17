@@ -3,6 +3,7 @@
 import { useSearchParams, useRouter } from "next/navigation";
 import { Suspense } from "react";
 import { ClipsTab } from "@/components/clips/clip-list";
+import { Board } from "@/components/board/board";
 
 function ProjectInner() {
   const params = useSearchParams();
@@ -49,7 +50,7 @@ function ProjectInner() {
       </header>
 
       {tab === "clips" && <ClipsTab projectId={id} />}
-      {tab === "board" && <Placeholder name="Storyboard editor — Plan 4" />}
+      {tab === "board" && <Board projectId={id} />}
       {tab === "search" && <Placeholder name="Semantic search — Plan 5" />}
     </main>
   );
