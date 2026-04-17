@@ -7,25 +7,9 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 
 from vlogkit.project import Project
 from vlogkit.server.auth import require_token, require_token_or_query
+from vlogkit.server.deps import get_registry, load_project
 from vlogkit.server.registry import ProjectRegistry
 from vlogkit.server.schemas import ClipSummary, ErrorDetail
-
-
-def _registry(request: Request) -> ProjectRegistry:
-    return request.app.state.registry
-
-
-def _load_project(registry: ProjectRegistry, project_id: str) -> Project:
-    entry = registry.get(project_id)
-    if not entry:
-        raise HTTPException(
-            status_code=404,
-            detail=ErrorDetail(
-                code="project_not_found",
-                message=f"Unknown project: {project_id}",
-            ).model_dump(),
-        )
-    return Project(root=Path(entry.path))
 
 
 def _summarize_clip(project: Project, clip_path: Path) -> ClipSummary:
@@ -55,9 +39,9 @@ def create_router() -> APIRouter:
     )
     def list_clips(
         project_id: str,
-        registry: ProjectRegistry = Depends(_registry),
+        registry: ProjectRegistry = Depends(get_registry),
     ) -> list[ClipSummary]:
-        project = _load_project(registry, project_id)
+        project = load_project(registry, project_id)
         clips = project.scan_clips()
         return [_summarize_clip(project, c) for c in clips]
 
@@ -69,9 +53,9 @@ def create_router() -> APIRouter:
     def get_clip(
         project_id: str,
         clip_hash: str,
-        registry: ProjectRegistry = Depends(_registry),
+        registry: ProjectRegistry = Depends(get_registry),
     ) -> ClipSummary:
-        project = _load_project(registry, project_id)
+        project = load_project(registry, project_id)
         for c in project.scan_clips():
             summary = _summarize_clip(project, c)
             if summary.sha256 == clip_hash:

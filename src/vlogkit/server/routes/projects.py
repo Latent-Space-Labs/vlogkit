@@ -6,16 +6,13 @@ from pathlib import Path
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 
 from vlogkit.server.auth import require_token
+from vlogkit.server.deps import get_registry
 from vlogkit.server.registry import ProjectRegistry
 from vlogkit.server.schemas import (
     ErrorDetail,
     ProjectEntryResponse,
     RegisterProjectRequest,
 )
-
-
-def _registry(request: Request) -> ProjectRegistry:
-    return request.app.state.registry
 
 
 def create_router() -> APIRouter:
@@ -27,7 +24,7 @@ def create_router() -> APIRouter:
 
     @router.get("", response_model=list[ProjectEntryResponse])
     def list_projects(
-        registry: ProjectRegistry = Depends(_registry),
+        registry: ProjectRegistry = Depends(get_registry),
     ) -> list[ProjectEntryResponse]:
         return [ProjectEntryResponse(**e.__dict__) for e in registry.list()]
 
@@ -40,7 +37,7 @@ def create_router() -> APIRouter:
     def register_project(
         body: RegisterProjectRequest,
         request: Request,
-        registry: ProjectRegistry = Depends(_registry),
+        registry: ProjectRegistry = Depends(get_registry),
     ) -> ProjectEntryResponse:
         folder = Path(body.path)
         if not folder.is_dir():
@@ -65,7 +62,7 @@ def create_router() -> APIRouter:
     )
     def get_project(
         project_id: str,
-        registry: ProjectRegistry = Depends(_registry),
+        registry: ProjectRegistry = Depends(get_registry),
     ) -> ProjectEntryResponse:
         entry = registry.get(project_id)
         if not entry:
@@ -86,7 +83,7 @@ def create_router() -> APIRouter:
     def forget_project(
         project_id: str,
         request: Request,
-        registry: ProjectRegistry = Depends(_registry),
+        registry: ProjectRegistry = Depends(get_registry),
     ) -> None:
         if not registry.forget(project_id):
             raise HTTPException(

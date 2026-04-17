@@ -18,6 +18,7 @@ from fastapi import (
 from vlogkit.project import Project
 from vlogkit.server import jobs as jobs_module
 from vlogkit.server.auth import require_token
+from vlogkit.server.deps import get_broker, get_registry, load_project
 from vlogkit.server.registry import ProjectRegistry
 from vlogkit.server.schemas import ErrorDetail
 from vlogkit.server.ws import WsBroker
@@ -49,27 +50,6 @@ def _run_job_in_thread(
     return t
 
 
-def _registry(request: Request) -> ProjectRegistry:
-    return request.app.state.registry
-
-
-def _broker(request: Request) -> WsBroker:
-    return request.app.state.ws_broker
-
-
-def _load_project(registry: ProjectRegistry, project_id: str) -> Project:
-    entry = registry.get(project_id)
-    if not entry:
-        raise HTTPException(
-            status_code=404,
-            detail=ErrorDetail(
-                code="project_not_found",
-                message=f"Unknown project: {project_id}",
-            ).model_dump(),
-        )
-    return Project(root=Path(entry.path))
-
-
 def create_router() -> APIRouter:
     router = APIRouter()
 
@@ -81,10 +61,10 @@ def create_router() -> APIRouter:
     )
     async def start_analyze(
         project_id: str,
-        registry: ProjectRegistry = Depends(_registry),
-        broker: WsBroker = Depends(_broker),
+        registry: ProjectRegistry = Depends(get_registry),
+        broker: WsBroker = Depends(get_broker),
     ) -> dict[str, str]:
-        project = _load_project(registry, project_id)
+        project = load_project(registry, project_id)
         job_id = jobs_module.new_job_id()
         _run_job_in_thread(broker, project_id, project, job_id)
         return {"job_id": job_id}
