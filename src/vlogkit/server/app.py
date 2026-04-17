@@ -61,6 +61,7 @@ def create_desktop_app(registry_path: Path, token: str) -> FastAPI:
     app.include_router(health.create_router())
     app.include_router(projects_routes.create_router())
     app.include_router(clips_routes.create_router())
+    app.include_router(clips_routes.create_media_router())
 
     return app
 
