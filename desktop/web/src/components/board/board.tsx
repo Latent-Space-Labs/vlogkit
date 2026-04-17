@@ -16,6 +16,7 @@ import { queryKeys } from "@/lib/query-keys";
 import { SectionRow } from "./section-row";
 import { EmptyBoard } from "./empty-board";
 import { useSegmentReorder } from "./use-segment-reorder";
+import { InspectorDrawer } from "./inspector-drawer";
 
 export function Board({ projectId }: { projectId: string }) {
   const { data, isLoading, error } = useQuery({
@@ -24,6 +25,19 @@ export function Board({ projectId }: { projectId: string }) {
     retry: false,
   });
   const reorder = useSegmentReorder(projectId);
+  const { data: clips } = useQuery({
+    queryKey: queryKeys.clips(projectId),
+    queryFn: () => api.listClips(projectId),
+  });
+
+  function basename(p: string): string {
+    const i = Math.max(p.lastIndexOf("/"), p.lastIndexOf("\\"));
+    return i >= 0 ? p.slice(i + 1) : p;
+  }
+  const hashMap = new Map<string, string>();
+  (clips ?? []).forEach((c) => {
+    if (c.sha256) hashMap.set(c.filename, c.sha256);
+  });
   const [selected, setSelected] = useState<{
     key: string;
     segment: StoryboardSegment;
@@ -82,18 +96,15 @@ export function Board({ projectId }: { projectId: string }) {
           ))}
         </div>
         <aside className="bg-[var(--color-background-alt)] rounded-[12px] p-4 h-fit sticky top-6">
-          {selected ? (
-            <>
-              <h4 className="font-semibold mb-2">
-                {selected.segment.label || "Untitled segment"}
-              </h4>
-              <p className="text-sm text-[var(--color-muted)] break-all">
-                {selected.segment.clip_path}
-              </p>
-              <p className="text-xs text-[var(--color-placeholder)] mt-2">
-                Preview + editing coming in Task 6.
-              </p>
-            </>
+          {selected && data ? (
+            <InspectorDrawer
+              segment={selected.segment}
+              sectionIndex={Number(selected.key.split(":")[0])}
+              segmentIndex={Number(selected.key.split(":")[1])}
+              storyboard={data}
+              clipSha256={hashMap.get(basename(selected.segment.clip_path))}
+              onSave={(next) => reorder.mutate(next)}
+            />
           ) : (
             <p className="text-sm text-[var(--color-muted)]">
               Select a segment to inspect it.
