@@ -59,7 +59,7 @@ export function SearchPanel({ projectId }: { projectId: string }) {
           </p>
           <div className="grid grid-cols-2 gap-3">
             {results.data.hits.map((h, i) => (
-              <ResultCard key={i} hit={h} />
+              <ResultCard key={i} projectId={projectId} hit={h} />
             ))}
           </div>
           {results.data.hits.length === 0 ? (

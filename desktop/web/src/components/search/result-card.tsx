@@ -1,6 +1,13 @@
 import type { SearchHit } from "@/lib/api";
+import { InsertIntoSection } from "./insert-into-section";
 
-export function ResultCard({ hit }: { hit: SearchHit }) {
+export function ResultCard({
+  projectId,
+  hit,
+}: {
+  projectId: string;
+  hit: SearchHit;
+}) {
   return (
     <div
       className="bg-white rounded-[8px] border border-[var(--color-border-whisper)] p-3"
@@ -22,6 +29,9 @@ export function ResultCard({ hit }: { hit: SearchHit }) {
           {hit.snippet}
         </p>
       ) : null}
+      <div className="mt-3 flex justify-end">
+        <InsertIntoSection projectId={projectId} hit={hit} />
+      </div>
     </div>
   );
 }
