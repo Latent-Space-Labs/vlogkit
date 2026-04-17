@@ -61,6 +61,10 @@ export const api = {
     request<void>(`/projects/${id}`, { method: "DELETE" }),
   listClips: (projectId: string) =>
     request<ClipSummary[]>(`/projects/${projectId}/clips`),
+  startAnalyze: (projectId: string) =>
+    request<{ job_id: string }>(`/projects/${projectId}/analyze`, {
+      method: "POST",
+    }),
 };
 
 export type { Project, ClipSummary, ErrorDetail };
