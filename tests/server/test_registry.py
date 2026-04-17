@@ -8,11 +8,6 @@ import pytest
 from vlogkit.server.registry import ProjectRegistry
 
 
-@pytest.fixture
-def registry_path(tmp_path: Path) -> Path:
-    return tmp_path / "projects.json"
-
-
 def test_project_id_is_stable_for_same_path(
     registry_path: Path, tmp_path: Path
 ) -> None:

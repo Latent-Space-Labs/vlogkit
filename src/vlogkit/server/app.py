@@ -8,7 +8,9 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from vlogkit.project import Project
+from vlogkit.server.registry import ProjectRegistry
 from vlogkit.server.routes import health, uploads
+from vlogkit.server.routes import projects as projects_routes
 
 
 def create_app(project: Project, token: str) -> FastAPI:
@@ -33,6 +35,30 @@ def create_app(project: Project, token: str) -> FastAPI:
 
     app.include_router(health.create_router())
     app.include_router(uploads.create_router(project))
+
+    return app
+
+
+def create_desktop_app(registry_path: Path, token: str) -> FastAPI:
+    """Build the FastAPI app for desktop mode.
+
+    Unlike ``create_app``, this one manages many projects via a registry
+    and is the entrypoint used by the Electron shell.
+    """
+    app = FastAPI(title="vlogkit desktop server")
+
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"],
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+
+    app.state.registry = ProjectRegistry(registry_path)
+    app.state.token = token
+
+    app.include_router(health.create_router())
+    app.include_router(projects_routes.create_router())
 
     return app
 

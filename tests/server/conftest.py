@@ -43,3 +43,15 @@ def sample_video_bytes() -> bytes:
 @pytest.fixture
 def sample_video_sha256(sample_video_bytes: bytes) -> str:
     return hashlib.sha256(sample_video_bytes).hexdigest()
+
+
+@pytest.fixture
+def registry_path(tmp_path: Path) -> Path:
+    return tmp_path / "projects.json"
+
+
+@pytest.fixture
+def desktop_client(registry_path: Path, test_token: str) -> TestClient:
+    from vlogkit.server.app import create_desktop_app
+    app = create_desktop_app(registry_path=registry_path, token=test_token)
+    return TestClient(app)
