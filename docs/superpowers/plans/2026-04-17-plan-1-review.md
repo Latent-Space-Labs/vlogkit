@@ -56,3 +56,20 @@
 - Verify: end-to-end curl-based smoke against a real running sidecar on port 8421 (Task 10 Step 2). All four endpoints (`/healthz`, `POST /projects`, `GET /projects`, `GET /projects/{id}/clips`) returned the expected shapes.
 - Plan improvements: this document.
 - Ready for Plan 2.
+
+## Final review fixes (landed on this branch post-review)
+
+- **Hash-space contract:** `/media/{hash}` now accepts both the 16-char prefix used by `ClipSummary.sha256` and the full 64-char sha256. Regression test added. Plan 2's renderer can link `GET /clips` results to `/media` without transformation.
+- **Memory-safe hashing:** `/media/{hash}` linear scan now hashes clips in 1 MB chunks instead of `read_bytes()`. The linear scan is still O(N) and will be replaced in Plan 3 — but it no longer blows RAM on large videos.
+- **Docs:** removed stale `[server]` optional-extras references in CLAUDE.md; added a BREAKING CHANGE note about `vlogkit serve` now requiring a Bearer token.
+- **Token visibility:** `Auth token:` line is now bold yellow in both `vlogkit serve` and `vlogkit server`.
+
+## Still open for Plan 2's first commit
+
+- **ErrorDetail not in OpenAPI schema** — it's only used as `HTTPException(detail=...)` content, so FastAPI never renders it into `components/schemas`. Plan 2's TS type generator will either hand-write it or miss typed errors. Fix by adding explicit `responses={404: {"model": ErrorDetail}}` to each route OR a global exception handler that returns an `ErrorDetail`-shaped body.
+- **`/media/{hash}` 404 shape** still uses bare `detail="media_not_found"` string instead of the structured `ErrorDetail` shape. Fold into the fix above.
+- **Token on subprocess argv** — Electron sidecar spawn should pass the token via env var (or stdin), not `--token` on argv, to avoid `ps` exposure.
+- **Extract shared `_registry` / `_load_project` helpers** into `server/deps.py` before more route modules land in Plan 3.
+- **Decide closure vs. `app.state` convention** for route→project lookup before Plan 4's storyboard routes.
+- **Non-constant-time token compare** — `auth.py` uses `!=` instead of `hmac.compare_digest`. Acceptable on 127.0.0.1 but trivial to fix.
+- **CORS `allow_origins=["*"]`** — tighten to the Electron custom scheme once Plan 2 picks one.

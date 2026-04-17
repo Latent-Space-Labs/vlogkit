@@ -176,7 +176,7 @@ def serve(
     console.print("\n[bold green]vlogkit upload server[/]")
     console.print(f"Project: {project.root}")
     console.print(f"Listening on: {url}")
-    console.print(f"[dim]Auth token:[/] {token}\n")
+    console.print(f"[bold yellow]Auth token:[/] [bold]{token}[/]\n")
 
     # Show QR code if qrcode is available
     try:
@@ -206,7 +206,7 @@ def server_cmd(
     from vlogkit.server.app import run_desktop_server
 
     token = secrets.token_urlsafe(24)
-    typer.echo(f"Auth token: {token}")
+    console.print(f"[bold yellow]Auth token:[/] [bold]{token}[/]")
     typer.echo(f"Port: {port}")
     run_desktop_server(registry_path=registry, token=token, port=port)
 

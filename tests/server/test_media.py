@@ -86,3 +86,15 @@ def test_media_requires_auth(
     _, clip_hash, _ = seeded_project
     resp = desktop_client.get(f"/media/{clip_hash}")
     assert resp.status_code == 401
+
+
+def test_media_accepts_16_char_hash_prefix(
+    desktop_client: TestClient,
+    auth_headers: dict[str, str],
+    seeded_project,
+) -> None:
+    _, full_hash, _ = seeded_project
+    short = full_hash[:16]
+    resp = desktop_client.get(f"/media/{short}", headers=auth_headers)
+    assert resp.status_code == 200
+    assert resp.content == FAKE_VIDEO

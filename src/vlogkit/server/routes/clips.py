@@ -98,8 +98,13 @@ def create_media_router() -> APIRouter:
         for entry in registry.list():
             project = Project(root=Path(entry.path))
             for c in project.scan_clips():
-                h = hashlib.sha256(c.read_bytes()).hexdigest()
-                if h == clip_hash:
+                hasher = hashlib.sha256()
+                with c.open("rb") as fh:
+                    for chunk in iter(lambda: fh.read(1024 * 1024), b""):
+                        hasher.update(chunk)
+                h_full = hasher.hexdigest()
+                # Accept both 16-char prefix (current ClipSummary.sha256 shape) and 64-char full.
+                if clip_hash in (h_full, h_full[:16]):
                     return stream_file(request, c)
         raise HTTPException(status_code=404, detail="media_not_found")
 

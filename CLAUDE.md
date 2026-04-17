@@ -11,7 +11,6 @@ AI-powered vlog assembly CLI tool. Takes raw video clips, analyzes them (metadat
 ```bash
 # Install (editable, uses hatch build system)
 pip install -e .
-pip install -e '.[server]'   # Include upload server deps (FastAPI, uvicorn, qrcode)
 pip install -e '.[search]'  # Include semantic video search (sentrysearch, chromadb)
 
 # Run tests
@@ -30,6 +29,9 @@ vlogkit index [-p path]      # Build semantic search index (requires [search] de
 vlogkit search "query"       # Search clips by visual content (e.g. "sunset over bridge")
 vlogkit search-stats         # Show search index info
 vlogkit serve [path]         # Start upload server for companion app (port 8420)
+
+> **Breaking change (Plan 1):** `vlogkit serve` now requires an auth token on every request. The token is generated at startup and printed on the console — companion apps must send it as `Authorization: Bearer <token>`.
+
 vlogkit server [--port N] [--registry PATH]   # Desktop-mode server (used by the desktop shell)
 vlogkit status               # Show project summary
 ```
@@ -64,7 +66,6 @@ Settings via `pydantic-settings` with `VLOGKIT_` env prefix:
 
 ## Key dependencies
 
-- `typer` (CLI), `pydantic` (models), `faster-whisper` (transcription), `stable-ts` (aligned transcription), `scenedetect` (scene detection), `opentimelineio` (timeline export), `anthropic` (LLM), `openai` (alt LLM), `ffmpeg-python` (video metadata), `rich` (terminal UI)
+- `typer` (CLI), `pydantic` (models), `faster-whisper` (transcription), `stable-ts` (aligned transcription), `scenedetect` (scene detection), `opentimelineio` (timeline export), `anthropic` (LLM), `openai` (alt LLM), `ffmpeg-python` (video metadata), `rich` (terminal UI), `fastapi`, `uvicorn`, `python-multipart`, `qrcode` (server)
 - Optional `[search]`: `sentrysearch` (brings `chromadb`, `google-genai`)
-- Optional `[server]`: `fastapi`, `uvicorn`, `python-multipart`, `qrcode`
 - Requires Python >=3.11
