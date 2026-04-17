@@ -118,3 +118,17 @@ class IndexStatus(BaseModel):
     indexed: int
     total: int
     ready: bool
+
+
+ExportFormat = Literal["fcpxml", "edl", "premiere", "otio"]
+
+
+class ExportRequest(BaseModel):
+    format: ExportFormat
+    destination: str
+
+
+class ExportResponse(BaseModel):
+    path: str
+    format: ExportFormat
+    size_bytes: int

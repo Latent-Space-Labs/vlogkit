@@ -82,6 +82,59 @@
         "title": "ErrorDetail",
         "type": "object"
       },
+      "ExportRequest": {
+        "properties": {
+          "destination": {
+            "title": "Destination",
+            "type": "string"
+          },
+          "format": {
+            "enum": [
+              "fcpxml",
+              "edl",
+              "premiere",
+              "otio"
+            ],
+            "title": "Format",
+            "type": "string"
+          }
+        },
+        "required": [
+          "format",
+          "destination"
+        ],
+        "title": "ExportRequest",
+        "type": "object"
+      },
+      "ExportResponse": {
+        "properties": {
+          "format": {
+            "enum": [
+              "fcpxml",
+              "edl",
+              "premiere",
+              "otio"
+            ],
+            "title": "Format",
+            "type": "string"
+          },
+          "path": {
+            "title": "Path",
+            "type": "string"
+          },
+          "size_bytes": {
+            "title": "Size Bytes",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "path",
+          "format",
+          "size_bytes"
+        ],
+        "title": "ExportResponse",
+        "type": "object"
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -958,6 +1011,94 @@
         "summary": "Get Clip",
         "tags": [
           "clips"
+        ]
+      }
+    },
+    "/projects/{project_id}/export": {
+      "post": {
+        "operationId": "export_projects__project_id__export_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExportRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExportResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDetail"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDetail"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Export",
+        "tags": [
+          "export"
         ]
       }
     },
