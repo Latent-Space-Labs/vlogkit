@@ -6,7 +6,7 @@ from pathlib import Path
 from fastapi import APIRouter, Depends, HTTPException, Request
 
 from vlogkit.project import Project
-from vlogkit.server.auth import require_token
+from vlogkit.server.auth import require_token, require_token_or_query
 from vlogkit.server.registry import ProjectRegistry
 from vlogkit.server.schemas import ClipSummary, ErrorDetail
 
@@ -90,7 +90,7 @@ def create_router() -> APIRouter:
 def create_media_router() -> APIRouter:
     router = APIRouter(
         tags=["media"],
-        dependencies=[Depends(require_token)],
+        dependencies=[Depends(require_token_or_query)],
     )
 
     @router.get(

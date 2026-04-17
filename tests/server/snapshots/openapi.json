@@ -220,6 +220,22 @@
             }
           },
           {
+            "in": "query",
+            "name": "token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Token"
+            }
+          },
+          {
             "in": "header",
             "name": "authorization",
             "required": false,
