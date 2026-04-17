@@ -36,3 +36,29 @@ export type AnalyzeEvent =
   | AnalyzeClipDone
   | AnalyzeClipFailed
   | AnalyzeComplete;
+
+export type StoryboardRegenStarted = {
+  type: "storyboard.regen_started";
+  job_id: string;
+};
+export type StoryboardRegenToken = {
+  type: "storyboard.regen_token";
+  token: string;
+};
+export type StoryboardRegenComplete = {
+  type: "storyboard.regen_complete";
+  job_id: string;
+  storyboard: unknown;
+};
+export type StoryboardRegenFailed = {
+  type: "storyboard.regen_failed";
+  job_id: string;
+  error: string;
+};
+
+export type BoardEvent =
+  | AnalyzeEvent
+  | StoryboardRegenStarted
+  | StoryboardRegenToken
+  | StoryboardRegenComplete
+  | StoryboardRegenFailed;

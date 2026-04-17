@@ -125,6 +125,41 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/projects/{project_id}/storyboard": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Storyboard */
+        get: operations["get_storyboard_projects__project_id__storyboard_get"];
+        /** Put Storyboard */
+        put: operations["put_storyboard_projects__project_id__storyboard_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/projects/{project_id}/storyboard/regenerate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Regenerate */
+        post: operations["regenerate_projects__project_id__storyboard_regenerate_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -179,6 +214,91 @@ export interface components {
             /** Path */
             path: string;
         };
+        /** Storyboard */
+        "Storyboard-Input": {
+            /**
+             * Llm Rationale
+             * @default
+             */
+            llm_rationale: string;
+            /** Sections */
+            sections?: components["schemas"]["StoryboardSection"][];
+            /**
+             * Title
+             * @default Untitled Vlog
+             */
+            title: string;
+            /**
+             * Total Duration
+             * @default 0
+             */
+            total_duration: number;
+        };
+        /** Storyboard */
+        "Storyboard-Output": {
+            /**
+             * Llm Rationale
+             * @default
+             */
+            llm_rationale: string;
+            /** Sections */
+            sections?: components["schemas"]["StoryboardSection"][];
+            /**
+             * Title
+             * @default Untitled Vlog
+             */
+            title: string;
+            /**
+             * Total Duration
+             * @default 0
+             */
+            total_duration: number;
+        };
+        /** StoryboardSection */
+        StoryboardSection: {
+            /**
+             * Notes
+             * @default
+             */
+            notes: string;
+            /** Segments */
+            segments?: components["schemas"]["StoryboardSegment"][];
+            /** Title */
+            title: string;
+        };
+        /** StoryboardSegment */
+        StoryboardSegment: {
+            /**
+             * Clip Path
+             * Format: path
+             */
+            clip_path: string;
+            /**
+             * In Point
+             * @default 0
+             */
+            in_point: number;
+            /**
+             * Include
+             * @default true
+             */
+            include: boolean;
+            /**
+             * Label
+             * @default
+             */
+            label: string;
+            /**
+             * Out Point
+             * @default 0
+             */
+            out_point: number;
+            /**
+             * Transition
+             * @default
+             */
+            transition: string;
+        };
         /** ValidationError */
         ValidationError: {
             /** Context */
@@ -225,7 +345,9 @@ export interface operations {
     };
     stream_media_media__clip_hash__get: {
         parameters: {
-            query?: never;
+            query?: {
+                token?: string | null;
+            };
             header?: {
                 authorization?: string | null;
             };
@@ -529,6 +651,138 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ClipSummary"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorDetail"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_storyboard_projects__project_id__storyboard_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Storyboard-Output"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorDetail"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    put_storyboard_projects__project_id__storyboard_put: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Storyboard-Input"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Storyboard-Output"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorDetail"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    regenerate_projects__project_id__storyboard_regenerate_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: string;
+                    };
                 };
             };
             /** @description Not Found */

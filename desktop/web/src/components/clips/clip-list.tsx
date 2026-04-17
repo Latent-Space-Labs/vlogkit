@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { queryKeys } from "@/lib/query-keys";
 import { connectEventStream } from "@/lib/ws";
-import type { AnalyzeEvent, AnalyzeProgress } from "@/lib/events";
+import type { BoardEvent, AnalyzeProgress } from "@/lib/events";
 import { ClipCard } from "./clip-card";
 import { AnalyzeButton } from "./analyze-button";
 
@@ -18,7 +18,7 @@ export function ClipsTab({ projectId }: { projectId: string }) {
   const [progress, setProgress] = useState<Record<string, AnalyzeProgress>>({});
 
   useEffect(() => {
-    const disconnect = connectEventStream(projectId, (evt: AnalyzeEvent) => {
+    const disconnect = connectEventStream(projectId, (evt: BoardEvent) => {
       if (evt.type === "analyze.progress") {
         setProgress((p) => ({ ...p, [evt.clip_filename]: evt }));
       } else if (evt.type === "analyze.clip_done") {

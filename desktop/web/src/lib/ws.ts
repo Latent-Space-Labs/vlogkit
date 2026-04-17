@@ -1,4 +1,4 @@
-import type { AnalyzeEvent } from "./events";
+import type { BoardEvent } from "./events";
 import { getBridge } from "./bridge";
 
 /**
@@ -7,7 +7,7 @@ import { getBridge } from "./bridge";
  */
 export function connectEventStream(
   projectId: string,
-  onEvent: (evt: AnalyzeEvent) => void,
+  onEvent: (evt: BoardEvent) => void,
 ): () => void {
   let ws: WebSocket | null = null;
   let closed = false;

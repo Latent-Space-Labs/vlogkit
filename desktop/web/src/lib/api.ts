@@ -4,6 +4,10 @@ import { getBridge } from "./bridge";
 type Project = components["schemas"]["ProjectEntryResponse"];
 type ClipSummary = components["schemas"]["ClipSummary"];
 type ErrorDetail = components["schemas"]["ErrorDetail"];
+type Storyboard = components["schemas"]["Storyboard-Output"];
+type StoryboardInput = components["schemas"]["Storyboard-Input"];
+type StoryboardSection = components["schemas"]["StoryboardSection"];
+type StoryboardSegment = components["schemas"]["StoryboardSegment"];
 
 export class ApiError extends Error {
   constructor(
@@ -65,6 +69,23 @@ export const api = {
     request<{ job_id: string }>(`/projects/${projectId}/analyze`, {
       method: "POST",
     }),
+  getStoryboard: (projectId: string) =>
+    request<Storyboard>(`/projects/${projectId}/storyboard`),
+  putStoryboard: (projectId: string, storyboard: StoryboardInput) =>
+    request<Storyboard>(`/projects/${projectId}/storyboard`, {
+      method: "PUT",
+      body: JSON.stringify(storyboard),
+    }),
+  regenerateStoryboard: (projectId: string) =>
+    request<{ job_id: string }>(
+      `/projects/${projectId}/storyboard/regenerate`,
+      { method: "POST" },
+    ),
 };
 
-export type { Project, ClipSummary, ErrorDetail };
+export function getMediaUrl(hash: string): string {
+  const { apiPort, token } = getBridge();
+  return `http://127.0.0.1:${apiPort}/media/${hash}?token=${encodeURIComponent(token)}`;
+}
+
+export type { Project, ClipSummary, ErrorDetail, Storyboard, StoryboardSection, StoryboardSegment };
