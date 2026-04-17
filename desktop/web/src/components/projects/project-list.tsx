@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { queryKeys } from "@/lib/query-keys";
@@ -7,6 +8,7 @@ import { ProjectCard } from "./project-card";
 import { EmptyState } from "./empty-state";
 
 export function ProjectList() {
+  const router = useRouter();
   const qc = useQueryClient();
   const { data, isLoading, error } = useQuery({
     queryKey: queryKeys.projects,
@@ -38,7 +40,7 @@ export function ProjectList() {
         <ProjectCard
           key={p.id}
           project={p}
-          onOpen={(id) => console.log("open project", id)}
+          onOpen={(id) => router.push(`/project?id=${id}&tab=clips`)}
           onForget={(id) => forget.mutate(id)}
         />
       ))}
