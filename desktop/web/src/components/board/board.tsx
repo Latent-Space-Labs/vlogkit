@@ -19,6 +19,7 @@ import { EmptyBoard } from "./empty-board";
 import { useSegmentReorder } from "./use-segment-reorder";
 import { InspectorDrawer } from "./inspector-drawer";
 import { RegenerateButton } from "./regenerate-button";
+import { ExportDialog } from "./export-dialog";
 
 export function Board({ projectId }: { projectId: string }) {
   const { data, isLoading, error } = useQuery({
@@ -50,6 +51,7 @@ export function Board({ projectId }: { projectId: string }) {
 
   const qc = useQueryClient();
   const [regenInFlight, setRegenInFlight] = useState(false);
+  const [exportOpen, setExportOpen] = useState(false);
 
   useEffect(() => {
     const dc = connectEventStream(projectId, (evt) => {
@@ -96,8 +98,9 @@ export function Board({ projectId }: { projectId: string }) {
   const sections = data.sections ?? [];
 
   return (
-    <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
-      <div className="grid grid-cols-[1fr_320px] gap-6">
+    <>
+      <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
+        <div className="grid grid-cols-[1fr_320px] gap-6">
         <div>
           <div className="mb-4 flex items-start justify-between gap-4">
             <div>
@@ -108,7 +111,15 @@ export function Board({ projectId }: { projectId: string }) {
                 </p>
               ) : null}
             </div>
-            <RegenerateButton projectId={projectId} inFlight={regenInFlight} />
+            <div className="flex gap-2">
+              <button
+                onClick={() => setExportOpen(true)}
+                className="px-3 py-1.5 rounded-[4px] font-semibold text-sm text-[var(--color-foreground)] border border-[var(--color-border-whisper)] bg-white hover:border-[var(--color-muted)]"
+              >
+                Export
+              </button>
+              <RegenerateButton projectId={projectId} inFlight={regenInFlight} />
+            </div>
           </div>
           {sections.map((s, i) => (
             <SectionRow
@@ -136,7 +147,15 @@ export function Board({ projectId }: { projectId: string }) {
             </p>
           )}
         </aside>
-      </div>
-    </DndContext>
+        </div>
+      </DndContext>
+      {exportOpen ? (
+        <ExportDialog
+          projectId={projectId}
+          projectName={data.title || "storyboard"}
+          onClose={() => setExportOpen(false)}
+        />
+      ) : null}
+    </>
   );
 }
