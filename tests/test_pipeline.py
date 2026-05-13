@@ -128,13 +128,20 @@ def test_analyze_clip_no_api_key_skips_vision_even_when_requested(stub_metadata_
     monkeypatch.setattr("vlogkit.analyze.pipeline.detect_scenes", lambda p: fake_scenes)
 
     describe_calls = 0
+    extract_calls = 0
 
     def fake_describe(*a, **k):
         nonlocal describe_calls
         describe_calls += 1
         return ("should not appear", [])
 
+    def fake_extract_keyframe(*a, **k):
+        nonlocal extract_calls
+        extract_calls += 1
+        return Path("nowhere.jpg")
+
     monkeypatch.setattr("vlogkit.analyze.pipeline.describe_keyframe", fake_describe)
+    monkeypatch.setattr("vlogkit.analyze.pipeline.extract_keyframe", fake_extract_keyframe)
 
     settings_no_key = Settings(anthropic_api_key="")
     clip = tmp_path / "clip.mp4"
@@ -144,3 +151,4 @@ def test_analyze_clip_no_api_key_skips_vision_even_when_requested(stub_metadata_
 
     assert len(result.scenes) == 1
     assert describe_calls == 0
+    assert extract_calls == 0
