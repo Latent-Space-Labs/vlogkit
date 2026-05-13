@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import socket
+import threading
 from pathlib import Path
 
 from fastapi import FastAPI
@@ -65,6 +66,21 @@ def create_desktop_app(registry_path: Path, token: str) -> FastAPI:
     app.state.clip_index = ClipIndex()
     app.state.ws_broker = WsBroker()
     app.state.token = token
+
+    # Seed the clip index for any projects already in the registry so that
+    # /media/{hash} works immediately after a sidecar restart (without the
+    # user having to re-open the folder via POST /projects).
+    def _seed_clip_index() -> None:
+        registry: ProjectRegistry = app.state.registry
+        index: ClipIndex = app.state.clip_index
+        for entry in registry.list():
+            try:
+                project = Project(root=Path(entry.path))
+                index.add_project(entry.id, project)
+            except Exception:
+                pass  # missing folder etc — skip silently
+
+    threading.Thread(target=_seed_clip_index, daemon=True).start()
 
     app.include_router(health.create_router())
     app.include_router(projects_routes.create_router())
