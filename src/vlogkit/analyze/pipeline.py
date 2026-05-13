@@ -42,6 +42,21 @@ def analyze_clip(
     except Exception as e:
         console.print(f"  [yellow]Scene detection failed for {clip_path.name}: {e}[/]")
 
+    if with_vision and scenes and settings.anthropic_api_key:
+        kf_dir = keyframes_dir or clip_path.parent
+        kf_dir.mkdir(parents=True, exist_ok=True)
+        for idx, scene in enumerate(scenes):
+            midpoint = (scene.start + scene.end) / 2
+            kf_path = kf_dir / f"{clip_path.stem}_scene{idx}.jpg"
+            try:
+                extract_keyframe(clip_path, midpoint, kf_path)
+                scene.keyframe_path = kf_path
+                description, tags = describe_keyframe(str(kf_path), settings)
+                scene.description = description
+                scene.tags = tags
+            except Exception as e:
+                console.print(f"  [yellow]Vision failed for scene {idx} of {clip_path.name}: {e}[/]")
+
     full_text = " ".join(seg.text for seg in transcript)
     summary = full_text[:200] + "..." if len(full_text) > 200 else full_text
 

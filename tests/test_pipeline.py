@@ -55,3 +55,35 @@ def test_analyze_clip_populates_scenes(settings, stub_metadata_and_transcribe, t
     assert result.scenes[0].end == 5.0
     assert result.scenes[1].start == 5.0
     assert result.scenes[1].end == 10.0
+
+
+def test_analyze_clip_vision_populates_descriptions(settings, stub_metadata_and_transcribe, tmp_path, monkeypatch):
+    """When with_vision=True, each scene gets a description, tags, and a keyframe path."""
+    fake_scenes = [SceneSegment(start=0.0, end=5.0), SceneSegment(start=5.0, end=10.0)]
+    monkeypatch.setattr("vlogkit.analyze.pipeline.detect_scenes", lambda p: fake_scenes)
+
+    captured_keyframes: list[Path] = []
+
+    def fake_extract_keyframe(clip_path: Path, timestamp: float, output_path: Path) -> Path:
+        output_path.write_bytes(b"fake-jpg")
+        captured_keyframes.append(output_path)
+        return output_path
+
+    def fake_describe(image_path: str, s: Settings) -> tuple[str, list[str]]:
+        return (f"description for {Path(image_path).name}", ["tagA", "tagB"])
+
+    monkeypatch.setattr("vlogkit.analyze.pipeline.extract_keyframe", fake_extract_keyframe)
+    monkeypatch.setattr("vlogkit.analyze.pipeline.describe_keyframe", fake_describe)
+
+    clip = tmp_path / "clip.mp4"
+    clip.write_bytes(b"not-a-real-mp4")
+
+    result = analyze_clip(clip, settings, with_vision=True, keyframes_dir=tmp_path)
+
+    assert len(result.scenes) == 2
+    for scene in result.scenes:
+        assert scene.description.startswith("description for ")
+        assert scene.tags == ["tagA", "tagB"]
+        assert scene.keyframe_path is not None
+        assert scene.keyframe_path.exists()
+    assert len(captured_keyframes) == 2
