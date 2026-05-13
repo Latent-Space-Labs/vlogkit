@@ -152,3 +152,39 @@ def test_analyze_clip_no_api_key_skips_vision_even_when_requested(stub_metadata_
     assert len(result.scenes) == 1
     assert describe_calls == 0
     assert extract_calls == 0
+
+
+def test_run_analysis_threads_with_vision_flag(tmp_path, monkeypatch):
+    """run_analysis must pass with_vision through to analyze_clip."""
+    from vlogkit.analyze import pipeline as pipeline_module
+    from vlogkit.project import Project
+
+    # Stub Project.scan_clips to return a single fake clip
+    clip = tmp_path / "clip.mp4"
+    clip.write_bytes(b"not-a-real-mp4")
+    monkeypatch.setattr(Project, "scan_clips", lambda self: [clip])
+    monkeypatch.setattr(Project, "load_analysis", lambda self, c: None)
+    monkeypatch.setattr(Project, "save_analysis", lambda self, a: None)
+
+    captured: dict[str, object] = {}
+
+    def fake_analyze_clip(c, s, with_vision=True, keyframes_dir=None):
+        captured["with_vision"] = with_vision
+        captured["keyframes_dir"] = keyframes_dir
+        from vlogkit.models import ClipAnalysis, ClipMetadata
+
+        return ClipAnalysis(
+            metadata=ClipMetadata(
+                filename=c.name, path=c, duration=1.0, resolution=(1, 1), fps=1.0, file_size=1
+            ),
+            file_hash="deadbeef",
+        )
+
+    monkeypatch.setattr(pipeline_module, "analyze_clip", fake_analyze_clip)
+
+    project = Project(tmp_path)
+    pipeline_module.run_analysis(project, force=False, with_vision=False)
+
+    assert captured["with_vision"] is False
+    assert captured["keyframes_dir"] is not None
+    assert ".vlogkit" in str(captured["keyframes_dir"])
