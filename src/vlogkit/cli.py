@@ -56,10 +56,11 @@ def analyze(
 
     if not no_vision and project.settings.anthropic_api_key:
         clips = project.scan_clips()
-        console.print(
-            f"[dim]Vision: describing scene keyframes for {len(clips)} clip(s) via Claude "
-            f"(~$0.02 per scene; use --no-vision to skip).[/]"
-        )
+        if clips:
+            console.print(
+                f"[dim]Vision: describing scene keyframes via Claude for {len(clips)} clip(s) "
+                f"(~$0.02 per scene, typically a few scenes per clip; use --no-vision to skip).[/]"
+            )
 
     run_analysis(project, force=force, with_vision=not no_vision)
 
