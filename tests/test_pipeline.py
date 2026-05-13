@@ -188,3 +188,29 @@ def test_run_analysis_threads_with_vision_flag(tmp_path, monkeypatch):
     assert captured["with_vision"] is False
     assert captured["keyframes_dir"] is not None
     assert ".vlogkit" in str(captured["keyframes_dir"])
+
+
+def test_cli_no_vision_flag_threads_through(tmp_path, monkeypatch):
+    """The CLI --no-vision flag must reach run_analysis with with_vision=False."""
+    from typer.testing import CliRunner
+
+    from vlogkit.cli import app
+
+    captured: dict[str, object] = {}
+
+    def fake_run_analysis(project, force=False, with_vision=True):
+        captured["with_vision"] = with_vision
+
+    monkeypatch.setattr("vlogkit.analyze.pipeline.run_analysis", fake_run_analysis)
+    # Prevent the search auto-indexer from touching anything real
+    monkeypatch.setattr(
+        "vlogkit.search.indexer.index_clips",
+        lambda *a, **k: None,
+        raising=False,
+    )
+
+    runner = CliRunner()
+    result = runner.invoke(app, ["analyze", "--no-vision", "-p", str(tmp_path)])
+
+    assert result.exit_code == 0, result.output
+    assert captured["with_vision"] is False
