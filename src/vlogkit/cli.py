@@ -44,8 +44,9 @@ def init(
 def analyze(
     path: Annotated[Optional[Path], typer.Option("--path", "-p", help="Project directory")] = None,
     force: Annotated[bool, typer.Option("--force", "-f", help="Re-analyze all clips")] = False,
+    no_vision: Annotated[bool, typer.Option("--no-vision", help="Skip Claude vision keyframe descriptions")] = False,
 ):
-    """Run analysis pipeline (transcribe, extract metadata). Results are cached."""
+    """Run analysis pipeline (transcribe, detect scenes, describe keyframes). Results are cached."""
     project = _get_project(path)
     if not project.is_initialized():
         console.print("[red]Not a vlogkit project. Run `vlogkit init` first.[/]")
@@ -53,7 +54,15 @@ def analyze(
 
     from .analyze.pipeline import run_analysis
 
-    run_analysis(project, force=force)
+    if not no_vision and project.settings.anthropic_api_key:
+        clips = project.scan_clips()
+        if clips:
+            console.print(
+                f"[dim]Vision: describing scene keyframes via Claude for {len(clips)} clip(s) "
+                f"(~$0.02 per scene, typically a few scenes per clip; use --no-vision to skip).[/]"
+            )
+
+    run_analysis(project, force=force, with_vision=not no_vision)
 
     # Auto-index for semantic search if enabled and search deps installed
     if project.settings.search_auto_index:
