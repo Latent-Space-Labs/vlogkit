@@ -1,4 +1,4 @@
-"""Analysis pipeline — orchestrates metadata + transcription with caching."""
+"""Analysis pipeline — orchestrates metadata + transcription + scenes + vision with caching."""
 
 from __future__ import annotations
 
@@ -8,10 +8,12 @@ from rich.console import Console
 from rich.progress import Progress, SpinnerColumn, TextColumn
 
 from ..config import Settings
-from ..models import ClipAnalysis
+from ..models import ClipAnalysis, SceneSegment
 from ..project import Project, file_hash
 from .metadata import extract_metadata
+from .scenes import detect_scenes, extract_keyframe
 from .transcribe import transcribe_clip
+from .vision import describe_keyframe
 
 console = Console()
 
@@ -19,6 +21,8 @@ console = Console()
 def analyze_clip(
     clip_path: Path,
     settings: Settings,
+    with_vision: bool = True,
+    keyframes_dir: Path | None = None,
 ) -> ClipAnalysis:
     metadata = extract_metadata(clip_path)
 
@@ -32,24 +36,32 @@ def analyze_clip(
     except Exception as e:
         console.print(f"  [yellow]Transcription failed for {clip_path.name}: {e}[/]")
 
+    scenes: list[SceneSegment] = []
+    try:
+        scenes = detect_scenes(clip_path)
+    except Exception as e:
+        console.print(f"  [yellow]Scene detection failed for {clip_path.name}: {e}[/]")
+
     full_text = " ".join(seg.text for seg in transcript)
     summary = full_text[:200] + "..." if len(full_text) > 200 else full_text
 
     return ClipAnalysis(
         metadata=metadata,
         transcript=transcript,
+        scenes=scenes,
         summary=summary,
         file_hash=file_hash(clip_path),
     )
 
 
-def run_analysis(project: Project, force: bool = False) -> list[ClipAnalysis]:
+def run_analysis(project: Project, force: bool = False, with_vision: bool = True) -> list[ClipAnalysis]:
     clips = project.scan_clips()
     if not clips:
         console.print("[red]No video clips found.[/]")
         return []
 
     results: list[ClipAnalysis] = []
+    keyframes_dir = project.settings.keyframes_dir(project.root)
 
     with Progress(
         SpinnerColumn(),
@@ -63,12 +75,17 @@ def run_analysis(project: Project, force: bool = False) -> list[ClipAnalysis]:
 
             if not force:
                 cached = project.load_analysis(clip)
-                if cached:
+                if cached and (not with_vision or cached.scenes):
                     results.append(cached)
                     progress.advance(task)
                     continue
 
-            analysis = analyze_clip(clip, project.settings)
+            analysis = analyze_clip(
+                clip,
+                project.settings,
+                with_vision=with_vision,
+                keyframes_dir=keyframes_dir,
+            )
             project.save_analysis(analysis)
             results.append(analysis)
             progress.advance(task)
