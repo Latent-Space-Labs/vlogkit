@@ -51,7 +51,10 @@ async def run_analyze_job(
                 # Wrap blocking work in to_thread so the event loop keeps running
                 # (other WS connections, incoming HTTP, etc.).
                 analysis = await asyncio.to_thread(
-                    analyze_clip, clip, project.settings
+                    analyze_clip,
+                    clip,
+                    project.settings,
+                    keyframes_dir=project.settings.keyframes_dir(project.root),
                 )
                 await asyncio.to_thread(project.save_analysis, analysis)
             await broker.publish(
