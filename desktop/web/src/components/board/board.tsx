@@ -182,16 +182,21 @@ export function Board({ projectId }: { projectId: string }) {
           ))}
         </div>
         <aside className="bg-[var(--color-background-alt)] rounded-[12px] p-4 h-fit sticky top-6">
-          {selected && data ? (
-            <InspectorDrawer
-              segment={selected.segment}
-              sectionIndex={Number(selected.key.split(":")[0])}
-              segmentIndex={Number(selected.key.split(":")[1])}
-              storyboard={data}
-              clipSha256={hashMap.get(basename(selected.segment.clip_path))}
-              onSave={(next) => reorder.mutate(next)}
-            />
-          ) : (
+          {selected && data ? (() => {
+            const filename = basename(selected.segment.clip_path);
+            const matchingClip = (clips ?? []).find((c) => c.filename === filename);
+            return (
+              <InspectorDrawer
+                segment={selected.segment}
+                sectionIndex={Number(selected.key.split(":")[0])}
+                segmentIndex={Number(selected.key.split(":")[1])}
+                storyboard={data}
+                clipSha256={hashMap.get(filename)}
+                clipScenes={matchingClip?.analysis?.scenes ?? undefined}
+                onSave={(next) => reorder.mutate(next)}
+              />
+            );
+          })() : (
             <p className="text-sm text-[var(--color-muted)]">
               Select a segment to inspect it.
             </p>

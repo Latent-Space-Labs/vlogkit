@@ -2,7 +2,20 @@
 
 import { useEffect, useState } from "react";
 import type { Storyboard, StoryboardSegment } from "@/lib/api";
+import type { components } from "@/lib/api-types";
+import { CompositeChip } from "@/components/clips/composite-chip";
+import { DimensionBar } from "@/components/clips/dimension-bar";
+import { SceneTypeChip } from "@/components/clips/scene-type-chip";
 import { ClipPreview } from "./clip-preview";
+
+type ClipScene = components["schemas"]["ClipScene"];
+
+function findSceneAtTime(scenes: ClipScene[], time: number): ClipScene | null {
+  for (const s of scenes) {
+    if (time >= s.start && time < s.end) return s;
+  }
+  return null;
+}
 
 export function InspectorDrawer({
   segment,
@@ -10,6 +23,7 @@ export function InspectorDrawer({
   segmentIndex,
   storyboard,
   clipSha256,
+  clipScenes,
   onSave,
 }: {
   segment: StoryboardSegment;
@@ -17,6 +31,7 @@ export function InspectorDrawer({
   segmentIndex: number;
   storyboard: Storyboard;
   clipSha256: string | null | undefined;
+  clipScenes?: ClipScene[];
   onSave: (next: Storyboard) => void;
 }) {
   const [label, setLabel] = useState(segment.label ?? "");
@@ -40,7 +55,6 @@ export function InspectorDrawer({
       ) {
         return;
       }
-      // Deep clone and mutate the target segment only.
       const next: Storyboard = JSON.parse(JSON.stringify(storyboard));
       const sections = next.sections ?? [];
       const sec = sections[sectionIndex];
@@ -59,8 +73,37 @@ export function InspectorDrawer({
 
   const duration = Math.max(0, outPoint - inPoint);
 
+  // Murch readout — find the scene that brackets the segment's in_point
+  const scene = clipScenes ? findSceneAtTime(clipScenes, segment.in_point) : null;
+
   return (
     <div className="space-y-4">
+      {clipScenes && (
+        scene === null ? null : !scene.murch ? (
+          <p className="text-xs text-[var(--color-placeholder)] italic">
+            This scene hasn&apos;t been scored yet. Run &quot;Score scenes&quot; on the clips tab.
+          </p>
+        ) : (
+          <div className="p-3 bg-[var(--color-background-alt)] rounded-md">
+            <div className="flex items-center gap-2 mb-2">
+              <SceneTypeChip type={scene.murch.scene_type} />
+              <CompositeChip score={scene.murch.composite} />
+            </div>
+            <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
+              <DimRow label="Aesthetic" value={scene.murch.aesthetic} />
+              <DimRow label="Credibility" value={scene.murch.credibility} />
+              <DimRow label="Impact" value={scene.murch.impact} />
+              <DimRow label="Memorability" value={scene.murch.memorability} />
+              <DimRow label="Fun" value={scene.murch.fun} />
+            </div>
+            {scene.murch.rationale && (
+              <p className="text-xs text-[var(--color-muted)] italic mt-2">
+                &quot;{scene.murch.rationale}&quot;
+              </p>
+            )}
+          </div>
+        )
+      )}
       <ClipPreview clipSha256={clipSha256} start={inPoint} end={outPoint} />
       <label className="block">
         <span className="text-xs text-[var(--color-muted)]">Label</span>
@@ -99,5 +142,15 @@ export function InspectorDrawer({
         Duration: {duration.toFixed(1)}s · {segment.clip_path}
       </p>
     </div>
+  );
+}
+
+function DimRow({ label, value }: { label: string; value: number }) {
+  return (
+    <span className="flex items-center gap-2">
+      <span className="text-[var(--color-muted)] w-20">{label}</span>
+      <DimensionBar value={value} width={48} />
+      <span className="font-semibold">{Math.round(value)}</span>
+    </span>
   );
 }
