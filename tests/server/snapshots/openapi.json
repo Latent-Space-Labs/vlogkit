@@ -1,19 +1,142 @@
 {
   "components": {
     "schemas": {
-      "ClipSummary": {
+      "ClipAnalysisSummary": {
         "properties": {
-          "analysis": {
+          "scenes": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/ClipScene"
+            },
+            "title": "Scenes",
+            "type": "array"
+          },
+          "summary": {
+            "default": "",
+            "title": "Summary",
+            "type": "string"
+          }
+        },
+        "title": "ClipAnalysisSummary",
+        "type": "object"
+      },
+      "ClipMurchScore": {
+        "properties": {
+          "aesthetic": {
+            "title": "Aesthetic",
+            "type": "number"
+          },
+          "composite": {
+            "title": "Composite",
+            "type": "number"
+          },
+          "credibility": {
+            "title": "Credibility",
+            "type": "number"
+          },
+          "fun": {
+            "title": "Fun",
+            "type": "number"
+          },
+          "impact": {
+            "title": "Impact",
+            "type": "number"
+          },
+          "memorability": {
+            "title": "Memorability",
+            "type": "number"
+          },
+          "rationale": {
+            "default": "",
+            "title": "Rationale",
+            "type": "string"
+          },
+          "scene_type": {
+            "enum": [
+              "hook",
+              "narrative",
+              "aesthetic",
+              "commercial"
+            ],
+            "title": "Scene Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "scene_type",
+          "aesthetic",
+          "credibility",
+          "impact",
+          "memorability",
+          "fun",
+          "composite"
+        ],
+        "title": "ClipMurchScore",
+        "type": "object"
+      },
+      "ClipScene": {
+        "properties": {
+          "description": {
+            "default": "",
+            "title": "Description",
+            "type": "string"
+          },
+          "end": {
+            "title": "End",
+            "type": "number"
+          },
+          "keyframe_path": {
             "anyOf": [
               {
-                "additionalProperties": true,
-                "type": "object"
+                "type": "string"
               },
               {
                 "type": "null"
               }
             ],
-            "title": "Analysis"
+            "title": "Keyframe Path"
+          },
+          "murch": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ClipMurchScore"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "start": {
+            "title": "Start",
+            "type": "number"
+          },
+          "tags": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Tags",
+            "type": "array"
+          }
+        },
+        "required": [
+          "start",
+          "end"
+        ],
+        "title": "ClipScene",
+        "type": "object"
+      },
+      "ClipSummary": {
+        "properties": {
+          "analysis": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ClipAnalysisSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "filename": {
             "title": "Filename",
@@ -277,35 +400,7 @@
         "title": "SearchResponse",
         "type": "object"
       },
-      "Storyboard-Input": {
-        "properties": {
-          "llm_rationale": {
-            "default": "",
-            "title": "Llm Rationale",
-            "type": "string"
-          },
-          "sections": {
-            "items": {
-              "$ref": "#/components/schemas/StoryboardSection"
-            },
-            "title": "Sections",
-            "type": "array"
-          },
-          "title": {
-            "default": "Untitled Vlog",
-            "title": "Title",
-            "type": "string"
-          },
-          "total_duration": {
-            "default": 0.0,
-            "title": "Total Duration",
-            "type": "number"
-          }
-        },
-        "title": "Storyboard",
-        "type": "object"
-      },
-      "Storyboard-Output": {
+      "Storyboard": {
         "properties": {
           "llm_rationale": {
             "default": "",
@@ -1102,6 +1197,85 @@
         ]
       }
     },
+    "/projects/{project_id}/score": {
+      "post": {
+        "operationId": "start_score_projects__project_id__score_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "force",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Force",
+              "type": "boolean"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "title": "Response Start Score Projects  Project Id  Score Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDetail"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Start Score"
+      }
+    },
     "/projects/{project_id}/search": {
       "get": {
         "operationId": "search_projects__project_id__search_get",
@@ -1385,7 +1559,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Storyboard-Output"
+                  "$ref": "#/components/schemas/Storyboard"
                 }
               }
             },
@@ -1450,7 +1624,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/Storyboard-Input"
+                "$ref": "#/components/schemas/Storyboard"
               }
             }
           },
@@ -1461,7 +1635,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Storyboard-Output"
+                  "$ref": "#/components/schemas/Storyboard"
                 }
               }
             },
