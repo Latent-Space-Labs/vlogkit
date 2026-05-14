@@ -232,3 +232,112 @@ def test_editor_run_raises_agent_error_on_malformed_json():
     with pytest.raises(AgentError) as exc:
         run(plan=DirectorPlan(title="T"), analyses=[], backend=FakeBackend())
     assert exc.value.stage == "editor"
+
+
+def test_polisher_run_returns_canonical_storyboard(tmp_path):
+    from vlogkit.models import ClipAnalysis, ClipMetadata, Storyboard
+    from vlogkit.storyboard.agents.director import DirectorPlan, DirectorSection
+    from vlogkit.storyboard.agents.editor import (
+        EditorAssignments, EditorPick, EditorSectionAssignment,
+    )
+    from vlogkit.storyboard.agents.polisher import run
+
+    class FakeBackend:
+        def complete(self, prompt, system=""):
+            return (
+                '{"title": "Final Title", "sections": [{"title": "Open", "notes": "n", '
+                '"segments": [{"clip_path": "clip.mp4", "in_point": 0.0, "out_point": 5.0, '
+                '"label": "opening shot", "transition": "cut", "include": true}]}], '
+                '"total_duration": 5.0, "llm_rationale": "tight"}'
+            )
+
+    plan = DirectorPlan(
+        title="T",
+        sections=[DirectorSection(id="s1", title="Open", goal="tease", target_duration=5)],
+    )
+    assignments = EditorAssignments(
+        assignments=[EditorSectionAssignment(
+            section_id="s1",
+            picks=[EditorPick(clip_path="clip.mp4", scene_index=0, in_point=0.0, out_point=5.0, reason="ok")],
+        )],
+    )
+    analysis = ClipAnalysis(
+        metadata=ClipMetadata(
+            filename="clip.mp4", path=tmp_path / "clip.mp4", duration=10.0,
+            resolution=(1, 1), fps=30.0, file_size=4,
+        ),
+        file_hash="x",
+    )
+
+    storyboard = run(
+        plan=plan, assignments=assignments, analyses=[analysis],
+        project_root=tmp_path, backend=FakeBackend(),
+    )
+    assert isinstance(storyboard, Storyboard)
+    assert storyboard.title == "Final Title"
+    assert len(storyboard.sections) == 1
+    assert len(storyboard.sections[0].segments) == 1
+    seg = storyboard.sections[0].segments[0]
+    assert seg.label == "opening shot"
+    assert seg.transition == "cut"
+    assert seg.include is True
+
+
+def test_polisher_run_resolves_clip_path_to_full_path(tmp_path):
+    """Polisher rewrites bare filenames to project-relative paths so export can find them."""
+    from vlogkit.models import ClipAnalysis, ClipMetadata
+    from vlogkit.storyboard.agents.director import DirectorPlan, DirectorSection
+    from vlogkit.storyboard.agents.editor import (
+        EditorAssignments, EditorPick, EditorSectionAssignment,
+    )
+    from vlogkit.storyboard.agents.polisher import run
+
+    # Create a real file the resolver can find
+    (tmp_path / "clip.mp4").write_bytes(b"x")
+
+    class FakeBackend:
+        def complete(self, prompt, system=""):
+            return (
+                '{"title": "T", "sections": [{"title": "S", "notes": "", '
+                '"segments": [{"clip_path": "clip.mp4", "in_point": 0.0, "out_point": 5.0, '
+                '"label": "x", "transition": "cut", "include": true}]}], '
+                '"total_duration": 5.0, "llm_rationale": "ok"}'
+            )
+
+    plan = DirectorPlan(
+        title="T",
+        sections=[DirectorSection(id="s1", title="S", goal="g", target_duration=5)],
+    )
+    assignments = EditorAssignments()
+    analysis = ClipAnalysis(
+        metadata=ClipMetadata(
+            filename="clip.mp4", path=tmp_path / "clip.mp4", duration=10.0,
+            resolution=(1, 1), fps=30.0, file_size=4,
+        ),
+        file_hash="x",
+    )
+
+    storyboard = run(
+        plan=plan, assignments=assignments, analyses=[analysis],
+        project_root=tmp_path, backend=FakeBackend(),
+    )
+    seg = storyboard.sections[0].segments[0]
+    assert (tmp_path / "clip.mp4").samefile(seg.clip_path)
+
+
+def test_polisher_run_raises_agent_error_on_malformed_json(tmp_path):
+    from vlogkit.storyboard.agents.base import AgentError
+    from vlogkit.storyboard.agents.director import DirectorPlan
+    from vlogkit.storyboard.agents.editor import EditorAssignments
+    from vlogkit.storyboard.agents.polisher import run
+
+    class FakeBackend:
+        def complete(self, prompt, system=""):
+            return "junk"
+
+    with pytest.raises(AgentError) as exc:
+        run(
+            plan=DirectorPlan(title="T"), assignments=EditorAssignments(),
+            analyses=[], project_root=tmp_path, backend=FakeBackend(),
+        )
+    assert exc.value.stage == "polisher"
