@@ -23,12 +23,37 @@ class ErrorDetail(BaseModel):
     context: dict | None = None
 
 
+class ClipMurchScore(BaseModel):
+    scene_type: Literal["hook", "narrative", "aesthetic", "commercial"]
+    aesthetic: float
+    credibility: float
+    impact: float
+    memorability: float
+    fun: float
+    composite: float
+    rationale: str = ""
+
+
+class ClipScene(BaseModel):
+    start: float
+    end: float
+    description: str = ""
+    tags: list[str] = []
+    keyframe_path: str | None = None
+    murch: ClipMurchScore | None = None
+
+
+class ClipAnalysisSummary(BaseModel):
+    scenes: list[ClipScene] = []
+    summary: str = ""
+
+
 class ClipSummary(BaseModel):
     filename: str
     size: int
     sha256: str | None = None  # None until analyzed (hash computed at analyze time)
     status: Literal["unanalyzed", "analyzed", "failed"]
-    analysis: dict | None = None  # serialized ClipAnalysis when available
+    analysis: ClipAnalysisSummary | None = None
 
 
 class AnalyzeStarted(BaseModel):
