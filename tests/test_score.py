@@ -110,3 +110,107 @@ def test_load_project_weights_malformed_json_returns_defaults_with_warning(tmp_p
 
     loaded = load_project_weights(project_root)
     assert loaded == DEFAULT_WEIGHTS
+
+
+def _make_scene_with_context(idx: int, description: str = "a description"):
+    """Build a SceneSegment with sane defaults for scoring tests."""
+    from vlogkit.models import SceneSegment
+    return SceneSegment(start=idx * 5.0, end=(idx + 1) * 5.0, description=description, tags=["t1"])
+
+
+def test_score_scene_parses_valid_response(monkeypatch):
+    """A valid JSON response from the LLM produces a MurchScore with composite computed locally."""
+    from vlogkit.config import Settings
+    from vlogkit.score.scorer import score_scene
+
+    captured_prompts: list[str] = []
+
+    class FakeBackend:
+        def complete(self, prompt: str, system: str = "") -> str:
+            captured_prompts.append(prompt)
+            return '{"scene_type": "hook", "aesthetic": 80, "credibility": 70, "impact": 90, "memorability": 85, "fun": 60, "rationale": "strong opener"}'
+
+    settings = Settings(anthropic_api_key="test-key")
+    scenes = [_make_scene_with_context(0), _make_scene_with_context(1), _make_scene_with_context(2)]
+
+    score = score_scene(
+        scene=scenes[1], scene_index=1, scenes=scenes,
+        clip_filename="clip.mp4", transcript_text="hello",
+        backend=FakeBackend(), weights=None,
+    )
+    assert score.scene_type == "hook"
+    assert score.impact == 90
+    # Hook composite: 0.10*80 + 0.05*70 + 0.40*90 + 0.30*85 + 0.15*60 = 8 + 3.5 + 36 + 25.5 + 9 = 82.0
+    assert abs(score.composite - 82.0) < 1e-6
+    assert score.rationale == "strong opener"
+    assert len(captured_prompts) == 1
+
+
+def test_score_scene_strips_markdown_fence(monkeypatch):
+    """Some LLM responses wrap JSON in ```json ... ``` fences. The scorer must tolerate that."""
+    from vlogkit.config import Settings
+    from vlogkit.score.scorer import score_scene
+
+    class FakeBackend:
+        def complete(self, prompt: str, system: str = "") -> str:
+            return '```json\n{"scene_type": "narrative", "aesthetic": 50, "credibility": 50, "impact": 50, "memorability": 50, "fun": 50, "rationale": "ok"}\n```'
+
+    settings = Settings(anthropic_api_key="test-key")
+    scenes = [_make_scene_with_context(0)]
+
+    score = score_scene(
+        scene=scenes[0], scene_index=0, scenes=scenes,
+        clip_filename="clip.mp4", transcript_text="",
+        backend=FakeBackend(), weights=None,
+    )
+    assert score.scene_type == "narrative"
+    assert score.composite == 50.0
+
+
+def test_score_scene_raises_on_malformed_json():
+    """Unparseable LLM output raises a clear error so the orchestrator can skip the scene."""
+    from vlogkit.config import Settings
+    from vlogkit.score.scorer import ScoringError, score_scene
+
+    class FakeBackend:
+        def complete(self, prompt: str, system: str = "") -> str:
+            return "this is not json at all"
+
+    settings = Settings(anthropic_api_key="test-key")
+    scenes = [_make_scene_with_context(0)]
+
+    import pytest
+    with pytest.raises(ScoringError):
+        score_scene(
+            scene=scenes[0], scene_index=0, scenes=scenes,
+            clip_filename="clip.mp4", transcript_text="",
+            backend=FakeBackend(), weights=None,
+        )
+
+
+def test_score_scene_includes_neighbor_descriptions_in_prompt():
+    """The prompt must reference the previous and next scene descriptions for context."""
+    from vlogkit.config import Settings
+    from vlogkit.score.scorer import score_scene
+
+    captured_prompts: list[str] = []
+
+    class FakeBackend:
+        def complete(self, prompt: str, system: str = "") -> str:
+            captured_prompts.append(prompt)
+            return '{"scene_type": "hook", "aesthetic": 50, "credibility": 50, "impact": 50, "memorability": 50, "fun": 50, "rationale": "ok"}'
+
+    scenes = [
+        _make_scene_with_context(0, description="opening shot of mountains"),
+        _make_scene_with_context(1, description="middle shot of a face"),
+        _make_scene_with_context(2, description="closing shot of sky"),
+    ]
+    settings = Settings(anthropic_api_key="test-key")
+
+    score_scene(
+        scene=scenes[1], scene_index=1, scenes=scenes,
+        clip_filename="clip.mp4", transcript_text="",
+        backend=FakeBackend(), weights=None,
+    )
+    assert "opening shot of mountains" in captured_prompts[0]
+    assert "closing shot of sky" in captured_prompts[0]
