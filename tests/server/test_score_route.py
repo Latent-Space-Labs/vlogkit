@@ -1,9 +1,8 @@
-"""Tests for POST /projects/{id}/score."""
+"""Tests for POST /projects/{id}/score (async + threaded)."""
 
 from __future__ import annotations
 
 import json
-import time
 from pathlib import Path
 
 from fastapi.testclient import TestClient
@@ -16,64 +15,59 @@ def _make_client(tmp_path: Path) -> tuple[TestClient, str]:
     project_root = tmp_path / "p"
     project_root.mkdir()
     registry = tmp_path / "registry.json"
-    registry.write_text(
-        json.dumps(
-            [
-                {
-                    "id": "p",
-                    "path": str(project_root),
-                    "name": "p",
-                    "last_opened": time.time(),
-                }
-            ]
-        )
-    )
+    registry.write_text(json.dumps([
+        {"id": "p", "path": str(project_root), "name": "p", "last_opened": 0}
+    ]))
 
     token = "test-token"
     app = create_desktop_app(registry_path=registry, token=token)
     return TestClient(app), token
 
 
-def test_score_route_calls_run_scoring(tmp_path, monkeypatch):
-    captured: dict[str, object] = {}
-
-    def fake_run_scoring(project, force=False):
-        captured["project_root"] = project.root
-        captured["force"] = force
-        return 7
-
-    monkeypatch.setattr("vlogkit.score.scorer.run_scoring", fake_run_scoring)
+def test_score_route_returns_job_id_with_202(tmp_path, monkeypatch):
+    """Endpoint should be async — return 202 with {job_id} immediately."""
+    monkeypatch.setattr(
+        "vlogkit.server.jobs.run_score_job",
+        lambda **kw: None,
+    )
 
     client, token = _make_client(tmp_path)
     resp = client.post(
         "/projects/p/score",
         headers={"Authorization": f"Bearer {token}"},
     )
-    assert resp.status_code == 200, resp.text
-    assert resp.json() == {"scored": 7}
-    assert captured["force"] is False
+    assert resp.status_code == 202, resp.text
+    body = resp.json()
+    assert "job_id" in body
+    assert isinstance(body["job_id"], str) and len(body["job_id"]) > 0
 
 
-def test_score_route_force_query_param(tmp_path, monkeypatch):
+def test_score_route_force_query_param_propagates(tmp_path, monkeypatch):
+    """?force=true must reach run_score_job."""
     captured: dict[str, object] = {}
 
-    def fake_run_scoring(project, force=False):
+    async def fake_run_score_job(broker, project_id, project, job_id, force=False):
         captured["force"] = force
-        return 0
 
-    monkeypatch.setattr("vlogkit.score.scorer.run_scoring", fake_run_scoring)
+    monkeypatch.setattr("vlogkit.server.jobs.run_score_job", fake_run_score_job)
 
     client, token = _make_client(tmp_path)
     resp = client.post(
         "/projects/p/score?force=true",
         headers={"Authorization": f"Bearer {token}"},
     )
-    assert resp.status_code == 200
-    assert captured["force"] is True
+    assert resp.status_code == 202
+
+    import time
+    for _ in range(20):
+        if "force" in captured:
+            break
+        time.sleep(0.05)
+    assert captured.get("force") is True
 
 
 def test_score_route_requires_auth(tmp_path, monkeypatch):
-    monkeypatch.setattr("vlogkit.score.scorer.run_scoring", lambda **kw: 0)
+    monkeypatch.setattr("vlogkit.server.jobs.run_score_job", lambda **kw: None)
     client, _token = _make_client(tmp_path)
     resp = client.post("/projects/p/score")
     assert resp.status_code in (401, 403)

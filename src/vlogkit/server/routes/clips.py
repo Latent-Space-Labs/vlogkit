@@ -12,6 +12,33 @@ from vlogkit.server.registry import ProjectRegistry
 from vlogkit.server.schemas import ClipSummary, ErrorDetail
 
 
+def _to_clip_analysis_summary(analysis):
+    """Convert internal ClipAnalysis → ClipAnalysisSummary (the API-facing shape)."""
+    from vlogkit.server.schemas import ClipAnalysisSummary, ClipMurchScore, ClipScene
+
+    scenes = []
+    for s in analysis.scenes:
+        murch = None
+        if s.murch is not None:
+            murch = ClipMurchScore(
+                scene_type=s.murch.scene_type,
+                aesthetic=s.murch.aesthetic,
+                credibility=s.murch.credibility,
+                impact=s.murch.impact,
+                memorability=s.murch.memorability,
+                fun=s.murch.fun,
+                composite=s.murch.composite,
+                rationale=s.murch.rationale,
+            )
+        scenes.append(ClipScene(
+            start=s.start, end=s.end,
+            description=s.description, tags=list(s.tags),
+            keyframe_path=str(s.keyframe_path) if s.keyframe_path else None,
+            murch=murch,
+        ))
+    return ClipAnalysisSummary(scenes=scenes, summary=analysis.summary or "")
+
+
 def _summarize_clip(project: Project, clip_path: Path) -> ClipSummary:
     cached = project.load_analysis(clip_path) if hasattr(
         project, "load_analysis"
@@ -21,7 +48,7 @@ def _summarize_clip(project: Project, clip_path: Path) -> ClipSummary:
         size=clip_path.stat().st_size,
         sha256=getattr(cached, "file_hash", None) if cached else None,
         status="analyzed" if cached else "unanalyzed",
-        analysis=cached.model_dump(mode="json") if cached else None,
+        analysis=_to_clip_analysis_summary(cached) if cached else None,
     )
 
 

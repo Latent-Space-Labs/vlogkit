@@ -21,23 +21,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/media/{clip_hash}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Stream Media */
-        get: operations["stream_media_media__clip_hash__get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/projects": {
         parameters: {
             query?: never;
@@ -69,23 +52,6 @@ export interface paths {
         post?: never;
         /** Forget Project */
         delete: operations["forget_project_projects__project_id__delete"];
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/projects/{project_id}/analyze": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Start Analyze */
-        post: operations["start_analyze_projects__project_id__analyze_post"];
-        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -125,32 +91,15 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/projects/{project_id}/export": {
+    "/media/{clip_hash}": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        get?: never;
-        put?: never;
-        /** Export */
-        post: operations["export_projects__project_id__export_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/projects/{project_id}/search": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Search */
-        get: operations["search_projects__project_id__search_get"];
+        /** Stream Media */
+        get: operations["stream_media_media__clip_hash__get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -159,18 +108,34 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/projects/{project_id}/search/index": {
+    "/projects/{project_id}/analyze": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        /** Get Index Status */
-        get: operations["get_index_status_projects__project_id__search_index_get"];
+        get?: never;
         put?: never;
-        /** Start Index */
-        post: operations["start_index_projects__project_id__search_index_post"];
+        /** Start Analyze */
+        post: operations["start_analyze_projects__project_id__analyze_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/projects/{project_id}/score": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Start Score */
+        post: operations["start_score_projects__project_id__score_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -212,58 +177,165 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/projects/{project_id}/search": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Search */
+        get: operations["search_projects__project_id__search_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/projects/{project_id}/search/index": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Index Status */
+        get: operations["get_index_status_projects__project_id__search_index_get"];
+        put?: never;
+        /** Start Index */
+        post: operations["start_index_projects__project_id__search_index_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/projects/{project_id}/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Export */
+        post: operations["export_projects__project_id__export_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** ClipAnalysisSummary */
+        ClipAnalysisSummary: {
+            /**
+             * Scenes
+             * @default []
+             */
+            scenes: components["schemas"]["ClipScene"][];
+            /**
+             * Summary
+             * @default
+             */
+            summary: string;
+        };
+        /** ClipMurchScore */
+        ClipMurchScore: {
+            /**
+             * Scene Type
+             * @enum {string}
+             */
+            scene_type: "hook" | "narrative" | "aesthetic" | "commercial";
+            /** Aesthetic */
+            aesthetic: number;
+            /** Credibility */
+            credibility: number;
+            /** Impact */
+            impact: number;
+            /** Memorability */
+            memorability: number;
+            /** Fun */
+            fun: number;
+            /** Composite */
+            composite: number;
+            /**
+             * Rationale
+             * @default
+             */
+            rationale: string;
+        };
+        /** ClipScene */
+        ClipScene: {
+            /** Start */
+            start: number;
+            /** End */
+            end: number;
+            /**
+             * Description
+             * @default
+             */
+            description: string;
+            /**
+             * Tags
+             * @default []
+             */
+            tags: string[];
+            /** Keyframe Path */
+            keyframe_path?: string | null;
+            murch?: components["schemas"]["ClipMurchScore"] | null;
+        };
         /** ClipSummary */
         ClipSummary: {
-            /** Analysis */
-            analysis?: {
-                [key: string]: unknown;
-            } | null;
             /** Filename */
             filename: string;
-            /** Sha256 */
-            sha256?: string | null;
             /** Size */
             size: number;
+            /** Sha256 */
+            sha256?: string | null;
             /**
              * Status
              * @enum {string}
              */
             status: "unanalyzed" | "analyzed" | "failed";
+            analysis?: components["schemas"]["ClipAnalysisSummary"] | null;
         };
         /** ErrorDetail */
         ErrorDetail: {
             /** Code */
             code: string;
+            /** Message */
+            message: string;
             /** Context */
             context?: {
                 [key: string]: unknown;
             } | null;
-            /** Message */
-            message: string;
         };
         /** ExportRequest */
         ExportRequest: {
-            /** Destination */
-            destination: string;
             /**
              * Format
              * @enum {string}
              */
             format: "fcpxml" | "edl" | "premiere" | "otio";
+            /** Destination */
+            destination: string;
         };
         /** ExportResponse */
         ExportResponse: {
+            /** Path */
+            path: string;
             /**
              * Format
              * @enum {string}
              */
             format: "fcpxml" | "edl" | "premiere" | "otio";
-            /** Path */
-            path: string;
             /** Size Bytes */
             size_bytes: number;
         };
@@ -276,21 +348,21 @@ export interface components {
         IndexStatus: {
             /** Indexed */
             indexed: number;
-            /** Ready */
-            ready: boolean;
             /** Total */
             total: number;
+            /** Ready */
+            ready: boolean;
         };
         /** ProjectEntryResponse */
         ProjectEntryResponse: {
             /** Id */
             id: string;
-            /** Last Opened */
-            last_opened: number;
-            /** Name */
-            name: string;
             /** Path */
             path: string;
+            /** Name */
+            name: string;
+            /** Last Opened */
+            last_opened: number;
         };
         /** RegisterProjectRequest */
         RegisterProjectRequest: {
@@ -299,14 +371,14 @@ export interface components {
         };
         /** SearchHit */
         SearchHit: {
-            /** Chunk End */
-            chunk_end: number;
-            /** Chunk Start */
-            chunk_start: number;
             /** Clip Filename */
             clip_filename: string;
             /** Clip Sha256 */
             clip_sha256?: string | null;
+            /** Chunk Start */
+            chunk_start: number;
+            /** Chunk End */
+            chunk_end: number;
             /** Score */
             score: number;
             /**
@@ -317,62 +389,42 @@ export interface components {
         };
         /** SearchResponse */
         SearchResponse: {
-            /** Hits */
-            hits: components["schemas"]["SearchHit"][];
             /** Query */
             query: string;
+            /** Hits */
+            hits: components["schemas"]["SearchHit"][];
         };
         /** Storyboard */
-        "Storyboard-Input": {
-            /**
-             * Llm Rationale
-             * @default
-             */
-            llm_rationale: string;
-            /** Sections */
-            sections?: components["schemas"]["StoryboardSection"][];
+        Storyboard: {
             /**
              * Title
              * @default Untitled Vlog
              */
             title: string;
+            /** Sections */
+            sections?: components["schemas"]["StoryboardSection"][];
             /**
              * Total Duration
              * @default 0
              */
             total_duration: number;
-        };
-        /** Storyboard */
-        "Storyboard-Output": {
             /**
              * Llm Rationale
              * @default
              */
             llm_rationale: string;
-            /** Sections */
-            sections?: components["schemas"]["StoryboardSection"][];
-            /**
-             * Title
-             * @default Untitled Vlog
-             */
-            title: string;
-            /**
-             * Total Duration
-             * @default 0
-             */
-            total_duration: number;
         };
         /** StoryboardSection */
         StoryboardSection: {
+            /** Title */
+            title: string;
+            /** Segments */
+            segments?: components["schemas"]["StoryboardSegment"][];
             /**
              * Notes
              * @default
              */
             notes: string;
-            /** Segments */
-            segments?: components["schemas"]["StoryboardSegment"][];
-            /** Title */
-            title: string;
         };
         /** StoryboardSegment */
         StoryboardSegment: {
@@ -387,38 +439,38 @@ export interface components {
              */
             in_point: number;
             /**
-             * Include
-             * @default true
+             * Out Point
+             * @default 0
              */
-            include: boolean;
+            out_point: number;
             /**
              * Label
              * @default
              */
             label: string;
             /**
-             * Out Point
-             * @default 0
-             */
-            out_point: number;
-            /**
              * Transition
              * @default
              */
             transition: string;
+            /**
+             * Include
+             * @default true
+             */
+            include: boolean;
         };
         /** ValidationError */
         ValidationError: {
-            /** Context */
-            ctx?: Record<string, never>;
-            /** Input */
-            input?: unknown;
             /** Location */
             loc: (string | number)[];
             /** Message */
             msg: string;
             /** Error Type */
             type: string;
+            /** Input */
+            input?: unknown;
+            /** Context */
+            ctx?: Record<string, never>;
         };
     };
     responses: never;
@@ -447,50 +499,6 @@ export interface operations {
                     "application/json": {
                         [key: string]: string;
                     };
-                };
-            };
-        };
-    };
-    stream_media_media__clip_hash__get: {
-        parameters: {
-            query?: {
-                token?: string | null;
-            };
-            header?: {
-                authorization?: string | null;
-            };
-            path: {
-                clip_hash: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-            /** @description Not Found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorDetail"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -652,50 +660,6 @@ export interface operations {
             };
         };
     };
-    start_analyze_projects__project_id__analyze_post: {
-        parameters: {
-            query?: never;
-            header?: {
-                authorization?: string | null;
-            };
-            path: {
-                project_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            202: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        [key: string]: string;
-                    };
-                };
-            };
-            /** @description Not Found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorDetail"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
     list_clips_projects__project_id__clips_get: {
         parameters: {
             query?: never;
@@ -781,7 +745,183 @@ export interface operations {
             };
         };
     };
-    export_projects__project_id__export_post: {
+    stream_media_media__clip_hash__get: {
+        parameters: {
+            query?: {
+                token?: string | null;
+            };
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                clip_hash: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorDetail"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    start_analyze_projects__project_id__analyze_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: string;
+                    };
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorDetail"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    start_score_projects__project_id__score_post: {
+        parameters: {
+            query?: {
+                force?: boolean;
+            };
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: string;
+                    };
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorDetail"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_storyboard_projects__project_id__storyboard_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Storyboard"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorDetail"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    put_storyboard_projects__project_id__storyboard_put: {
         parameters: {
             query?: never;
             header?: {
@@ -794,7 +934,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["ExportRequest"];
+                "application/json": components["schemas"]["Storyboard"];
             };
         };
         responses: {
@@ -804,16 +944,51 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ExportResponse"];
+                    "application/json": components["schemas"]["Storyboard"];
                 };
             };
-            /** @description Bad Request */
-            400: {
+            /** @description Not Found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
                     "application/json": components["schemas"]["ErrorDetail"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    regenerate_projects__project_id__storyboard_regenerate_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: string;
+                    };
                 };
             };
             /** @description Not Found */
@@ -985,49 +1160,7 @@ export interface operations {
             };
         };
     };
-    get_storyboard_projects__project_id__storyboard_get: {
-        parameters: {
-            query?: never;
-            header?: {
-                authorization?: string | null;
-            };
-            path: {
-                project_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Storyboard-Output"];
-                };
-            };
-            /** @description Not Found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorDetail"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    put_storyboard_projects__project_id__storyboard_put: {
+    export_projects__project_id__export_post: {
         parameters: {
             query?: never;
             header?: {
@@ -1040,7 +1173,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["Storyboard-Input"];
+                "application/json": components["schemas"]["ExportRequest"];
             };
         };
         responses: {
@@ -1050,51 +1183,16 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Storyboard-Output"];
+                    "application/json": components["schemas"]["ExportResponse"];
                 };
             };
-            /** @description Not Found */
-            404: {
+            /** @description Bad Request */
+            400: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
                     "application/json": components["schemas"]["ErrorDetail"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    regenerate_projects__project_id__storyboard_regenerate_post: {
-        parameters: {
-            query?: never;
-            header?: {
-                authorization?: string | null;
-            };
-            path: {
-                project_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            202: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        [key: string]: string;
-                    };
                 };
             };
             /** @description Not Found */

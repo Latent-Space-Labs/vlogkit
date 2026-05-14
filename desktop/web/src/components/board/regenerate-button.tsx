@@ -6,12 +6,15 @@ import { api } from "@/lib/api";
 export function RegenerateButton({
   projectId,
   inFlight,
+  onJobStarted,
 }: {
   projectId: string;
   inFlight: boolean;
+  onJobStarted?: (jobId: string) => void;
 }) {
   const mut = useMutation({
     mutationFn: () => api.regenerateStoryboard(projectId),
+    onSuccess: (resp) => onJobStarted?.(resp.job_id),
   });
   const running = mut.isPending || inFlight;
   return (

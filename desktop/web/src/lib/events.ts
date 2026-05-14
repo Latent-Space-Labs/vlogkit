@@ -56,9 +56,77 @@ export type StoryboardRegenFailed = {
   error: string;
 };
 
+// ---- Score events (new) ----
+
+export type ScoreStarted = {
+  type: "score.started";
+  job_id: string;
+  total_scenes: number;
+};
+export type ScoreProgress = {
+  type: "score.progress";
+  job_id: string;
+  scored: number;
+  total_scenes: number;
+  current_clip: string;
+  current_scene_index: number;
+};
+export type ScoreClipDone = {
+  type: "score.clip_done";
+  job_id: string;
+  clip_filename: string;
+  average_composite: number;
+};
+export type ScoreComplete = {
+  type: "score.complete";
+  job_id: string;
+  total_scored: number;
+};
+export type ScoreFailed = {
+  type: "score.failed";
+  job_id: string;
+  error: string;
+};
+
+export type ScoreEvent =
+  | ScoreStarted
+  | ScoreProgress
+  | ScoreClipDone
+  | ScoreComplete
+  | ScoreFailed;
+
+// ---- Storyboard agent stage events (new) ----
+
+export type StoryboardAgentStage = "director" | "editor" | "polisher";
+
+export type StoryboardAgentStarted = {
+  type: "storyboard.agent_started";
+  job_id: string;
+  stage: StoryboardAgentStage;
+};
+export type StoryboardAgentComplete = {
+  type: "storyboard.agent_complete";
+  job_id: string;
+  stage: StoryboardAgentStage;
+  summary: string;
+};
+export type StoryboardAgentFailed = {
+  type: "storyboard.agent_failed";
+  job_id: string;
+  stage: StoryboardAgentStage;
+  reason: string;
+};
+
+export type StoryboardAgentEvent =
+  | StoryboardAgentStarted
+  | StoryboardAgentComplete
+  | StoryboardAgentFailed;
+
 export type BoardEvent =
   | AnalyzeEvent
+  | ScoreEvent
   | StoryboardRegenStarted
   | StoryboardRegenToken
   | StoryboardRegenComplete
-  | StoryboardRegenFailed;
+  | StoryboardRegenFailed
+  | StoryboardAgentEvent;

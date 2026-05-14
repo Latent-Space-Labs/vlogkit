@@ -100,6 +100,25 @@ async def run_regenerate_job(
     try:
         from vlogkit.storyboard.builder import build_storyboard
 
+        # Bridge build_storyboard's event_callback into the WS broker
+        loop = asyncio.get_running_loop()
+
+        def _agent_event_callback(event_type: str, stage: str, summary_or_reason: str = ""):
+            from vlogkit.server.schemas import (
+                StoryboardAgentComplete,
+                StoryboardAgentFailed,
+                StoryboardAgentStarted,
+            )
+            if event_type == "agent_started":
+                evt = StoryboardAgentStarted(job_id=job_id, stage=stage)
+            elif event_type == "agent_complete":
+                evt = StoryboardAgentComplete(job_id=job_id, stage=stage, summary=summary_or_reason)
+            elif event_type == "agent_failed":
+                evt = StoryboardAgentFailed(job_id=job_id, stage=stage, reason=summary_or_reason)
+            else:
+                return
+            asyncio.run_coroutine_threadsafe(broker.publish(project_id, evt), loop)
+
         analyses = project.load_all_analyses()
         sb = await asyncio.to_thread(
             build_storyboard,
@@ -108,6 +127,7 @@ async def run_regenerate_job(
             project.settings,
             strategy,
             context,
+            _agent_event_callback,
         )
         await asyncio.to_thread(project.save_storyboard, sb)
         await broker.publish(
@@ -121,4 +141,74 @@ async def run_regenerate_job(
         await broker.publish(
             project_id,
             StoryboardRegenFailed(job_id=job_id, error=str(exc)),
+        )
+
+
+async def run_score_job(
+    broker: WsBroker,
+    project_id: str,
+    project: Project,
+    job_id: str,
+    force: bool = False,
+) -> None:
+    """Run scoring on all clips, emitting WS events as it goes."""
+    from vlogkit.score import scorer as scorer_module
+    from vlogkit.server.schemas import (
+        ScoreClipDone,
+        ScoreComplete,
+        ScoreFailed,
+        ScoreProgress,
+        ScoreStarted,
+    )
+
+    # Pre-count total scenes for the started event
+    clips = project.scan_clips()
+    total_scenes = 0
+    for clip in clips:
+        analysis = project.load_analysis(clip)
+        if analysis is not None:
+            total_scenes += len(analysis.scenes)
+
+    await broker.publish(
+        project_id,
+        ScoreStarted(job_id=job_id, total_scenes=total_scenes),
+    )
+
+    loop = asyncio.get_running_loop()
+
+    def progress_callback(event_type: str, **kwargs) -> None:
+        """Bridge sync run_scoring to the async broker via the loop."""
+        if event_type == "scene_scored":
+            evt = ScoreProgress(
+                job_id=job_id,
+                scored=kwargs["scored"],
+                total_scenes=kwargs["total_scenes"],
+                current_clip=kwargs["current_clip"],
+                current_scene_index=kwargs["current_scene_index"],
+            )
+        elif event_type == "clip_done":
+            evt = ScoreClipDone(
+                job_id=job_id,
+                clip_filename=kwargs["clip_filename"],
+                average_composite=kwargs["average_composite"],
+            )
+        else:
+            return
+        asyncio.run_coroutine_threadsafe(broker.publish(project_id, evt), loop)
+
+    try:
+        scored = await asyncio.to_thread(
+            scorer_module.run_scoring,
+            project,
+            force,
+            progress_callback,
+        )
+        await broker.publish(
+            project_id,
+            ScoreComplete(job_id=job_id, total_scored=scored),
+        )
+    except Exception as e:
+        await broker.publish(
+            project_id,
+            ScoreFailed(job_id=job_id, error=str(e)),
         )

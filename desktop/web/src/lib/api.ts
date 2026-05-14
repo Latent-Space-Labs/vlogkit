@@ -4,8 +4,8 @@ import { getBridge } from "./bridge";
 type Project = components["schemas"]["ProjectEntryResponse"];
 type ClipSummary = components["schemas"]["ClipSummary"];
 type ErrorDetail = components["schemas"]["ErrorDetail"];
-type Storyboard = components["schemas"]["Storyboard-Output"];
-type StoryboardInput = components["schemas"]["Storyboard-Input"];
+type Storyboard = components["schemas"]["Storyboard"];
+type StoryboardInput = components["schemas"]["Storyboard"];
 type StoryboardSection = components["schemas"]["StoryboardSection"];
 type StoryboardSegment = components["schemas"]["StoryboardSegment"];
 type SearchHit = components["schemas"]["SearchHit"];
@@ -85,6 +85,11 @@ export const api = {
   regenerateStoryboard: (projectId: string) =>
     request<{ job_id: string }>(
       `/projects/${projectId}/storyboard/regenerate`,
+      { method: "POST" },
+    ),
+  score: (projectId: string, force = false) =>
+    request<{ job_id: string }>(
+      `/projects/${projectId}/score${force ? "?force=true" : ""}`,
       { method: "POST" },
     ),
   searchClips: (projectId: string, query: string, k = 10) =>

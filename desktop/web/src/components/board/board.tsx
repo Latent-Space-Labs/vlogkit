@@ -20,6 +20,11 @@ import { useSegmentReorder } from "./use-segment-reorder";
 import { InspectorDrawer } from "./inspector-drawer";
 import { RegenerateButton } from "./regenerate-button";
 import { ExportDialog } from "./export-dialog";
+import {
+  AgentProgressStepper,
+  INITIAL_AGENT_STEPS,
+  type AgentSteps,
+} from "./agent-progress-stepper";
 
 export function Board({ projectId }: { projectId: string }) {
   const { data, isLoading, error } = useQuery({
@@ -51,6 +56,9 @@ export function Board({ projectId }: { projectId: string }) {
 
   const qc = useQueryClient();
   const [regenInFlight, setRegenInFlight] = useState(false);
+  const [agentJobId, setAgentJobId] = useState<string | null>(null);
+  const [agentSteps, setAgentSteps] = useState<AgentSteps>(INITIAL_AGENT_STEPS);
+  const [showStepper, setShowStepper] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
 
   useEffect(() => {
@@ -66,9 +74,30 @@ export function Board({ projectId }: { projectId: string }) {
           queryKey: [...queryKeys.project(projectId), "storyboard"],
         });
       }
+
+      // New: storyboard.agent_* event routing for the active regenerate job
+      if ("job_id" in evt && agentJobId && evt.job_id === agentJobId) {
+        if (evt.type === "storyboard.agent_started") {
+          setShowStepper(true); // first agent event mounts the stepper
+          setAgentSteps((prev) => ({
+            ...prev,
+            [evt.stage]: { status: "active", summary: "" },
+          }));
+        } else if (evt.type === "storyboard.agent_complete") {
+          setAgentSteps((prev) => ({
+            ...prev,
+            [evt.stage]: { status: "done", summary: evt.summary },
+          }));
+        } else if (evt.type === "storyboard.agent_failed") {
+          setAgentSteps((prev) => ({
+            ...prev,
+            [evt.stage]: { status: "failed", summary: evt.reason },
+          }));
+        }
+      }
     });
     return dc;
-  }, [projectId, qc]);
+  }, [projectId, qc, agentJobId]);
 
   function handleDragEnd(evt: DragEndEvent) {
     const { active, over } = evt;
@@ -118,9 +147,30 @@ export function Board({ projectId }: { projectId: string }) {
               >
                 Export
               </button>
-              <RegenerateButton projectId={projectId} inFlight={regenInFlight} />
+              <RegenerateButton
+                projectId={projectId}
+                inFlight={regenInFlight}
+                onJobStarted={(jobId) => {
+                  setAgentJobId(jobId);
+                  setAgentSteps(INITIAL_AGENT_STEPS);
+                  // Don't setShowStepper(true) here — only the first agent_started event mounts it.
+                  // If chronological_fallback is used (no API key), no agent events fire and stepper stays unmounted.
+                }}
+              />
             </div>
           </div>
+          {showStepper && (
+            <div className="mb-4">
+              <AgentProgressStepper
+                steps={agentSteps}
+                onComplete={() => {
+                  setShowStepper(false);
+                  setAgentJobId(null);
+                  setAgentSteps(INITIAL_AGENT_STEPS);
+                }}
+              />
+            </div>
+          )}
           {sections.map((s, i) => (
             <SectionRow
               key={i}
@@ -132,16 +182,21 @@ export function Board({ projectId }: { projectId: string }) {
           ))}
         </div>
         <aside className="bg-[var(--color-background-alt)] rounded-[12px] p-4 h-fit sticky top-6">
-          {selected && data ? (
-            <InspectorDrawer
-              segment={selected.segment}
-              sectionIndex={Number(selected.key.split(":")[0])}
-              segmentIndex={Number(selected.key.split(":")[1])}
-              storyboard={data}
-              clipSha256={hashMap.get(basename(selected.segment.clip_path))}
-              onSave={(next) => reorder.mutate(next)}
-            />
-          ) : (
+          {selected && data ? (() => {
+            const filename = basename(selected.segment.clip_path);
+            const matchingClip = (clips ?? []).find((c) => c.filename === filename);
+            return (
+              <InspectorDrawer
+                segment={selected.segment}
+                sectionIndex={Number(selected.key.split(":")[0])}
+                segmentIndex={Number(selected.key.split(":")[1])}
+                storyboard={data}
+                clipSha256={hashMap.get(filename)}
+                clipScenes={matchingClip?.analysis?.scenes ?? undefined}
+                onSave={(next) => reorder.mutate(next)}
+              />
+            );
+          })() : (
             <p className="text-sm text-[var(--color-muted)]">
               Select a segment to inspect it.
             </p>
