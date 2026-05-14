@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from datetime import datetime
 from pathlib import Path
+from typing import Literal
 
 from pydantic import BaseModel, Field
 
@@ -38,6 +39,20 @@ class WordTimestamp(BaseModel):
 TranscriptSegment.model_rebuild()
 
 
+SceneType = Literal["hook", "narrative", "aesthetic", "commercial"]
+
+
+class MurchScore(BaseModel):
+    scene_type: SceneType
+    aesthetic: float       # 0-100
+    credibility: float
+    impact: float
+    memorability: float
+    fun: float
+    composite: float       # computed locally from weights, not asked from LLM
+    rationale: str = ""
+
+
 class SceneSegment(BaseModel):
     start: float
     end: float
@@ -45,6 +60,7 @@ class SceneSegment(BaseModel):
     description: str = ""
     tags: list[str] = Field(default_factory=list)
     energy_score: float = 0.0
+    murch: MurchScore | None = None
 
 
 class AudioAnalysis(BaseModel):
