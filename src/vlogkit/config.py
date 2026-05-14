@@ -17,6 +17,7 @@ class Settings(BaseSettings):
     claude_model: str = "claude-sonnet-4-20250514"
     claude_vision_model: str = "claude-sonnet-4-20250514"
     score_model: str = "claude-sonnet-4-20250514"  # VLOGKIT_SCORE_MODEL
+    storyboard_model: str = "claude-sonnet-4-20250514"  # VLOGKIT_STORYBOARD_MODEL
 
     whisper_model: str = "base"
     whisper_device: str = "auto"
