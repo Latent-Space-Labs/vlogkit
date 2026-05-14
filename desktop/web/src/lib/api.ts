@@ -87,6 +87,11 @@ export const api = {
       `/projects/${projectId}/storyboard/regenerate`,
       { method: "POST" },
     ),
+  score: (projectId: string, force = false) =>
+    request<{ job_id: string }>(
+      `/projects/${projectId}/score${force ? "?force=true" : ""}`,
+      { method: "POST" },
+    ),
   searchClips: (projectId: string, query: string, k = 10) =>
     request<SearchResponse>(
       `/projects/${projectId}/search?q=${encodeURIComponent(query)}&k=${k}`,
