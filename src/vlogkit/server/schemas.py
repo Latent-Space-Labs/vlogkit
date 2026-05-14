@@ -132,3 +132,64 @@ class ExportResponse(BaseModel):
     path: str
     format: ExportFormat
     size_bytes: int
+
+
+# ---- Score job events (new) ----
+
+class ScoreStarted(BaseModel):
+    type: Literal["score.started"] = "score.started"
+    job_id: str
+    total_scenes: int
+
+
+class ScoreProgress(BaseModel):
+    type: Literal["score.progress"] = "score.progress"
+    job_id: str
+    scored: int
+    total_scenes: int
+    current_clip: str
+    current_scene_index: int
+
+
+class ScoreClipDone(BaseModel):
+    type: Literal["score.clip_done"] = "score.clip_done"
+    job_id: str
+    clip_filename: str
+    average_composite: float
+
+
+class ScoreComplete(BaseModel):
+    type: Literal["score.complete"] = "score.complete"
+    job_id: str
+    total_scored: int
+
+
+class ScoreFailed(BaseModel):
+    type: Literal["score.failed"] = "score.failed"
+    job_id: str
+    error: str
+
+
+# ---- Storyboard multi-agent stage events (new) ----
+
+AgentStage = Literal["director", "editor", "polisher"]
+
+
+class StoryboardAgentStarted(BaseModel):
+    type: Literal["storyboard.agent_started"] = "storyboard.agent_started"
+    job_id: str
+    stage: AgentStage
+
+
+class StoryboardAgentComplete(BaseModel):
+    type: Literal["storyboard.agent_complete"] = "storyboard.agent_complete"
+    job_id: str
+    stage: AgentStage
+    summary: str = ""
+
+
+class StoryboardAgentFailed(BaseModel):
+    type: Literal["storyboard.agent_failed"] = "storyboard.agent_failed"
+    job_id: str
+    stage: AgentStage
+    reason: str
