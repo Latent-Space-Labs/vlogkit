@@ -152,3 +152,83 @@ def test_director_run_raises_agent_error_on_missing_fields():
 
     with pytest.raises(AgentError):
         run(analyses=[analysis], strategy="energy-arc", context="trip", backend=FakeBackend())
+
+
+def test_editor_run_parses_valid_response():
+    from vlogkit.models import ClipAnalysis, ClipMetadata, MurchScore, SceneSegment
+    from vlogkit.storyboard.agents.director import DirectorPlan, DirectorSection
+    from vlogkit.storyboard.agents.editor import EditorAssignments, run
+
+    class FakeBackend:
+        def complete(self, prompt, system=""):
+            return '{"assignments": [{"section_id": "s1", "picks": [{"clip_path": "clip.mp4", "scene_index": 0, "in_point": 0.0, "out_point": 5.0, "reason": "best hook"}]}]}'
+
+    plan = DirectorPlan(
+        title="T",
+        sections=[DirectorSection(id="s1", title="Open", goal="tease", target_duration=5, scene_types=["hook"])],
+    )
+    analysis = ClipAnalysis(
+        metadata=ClipMetadata(
+            filename="clip.mp4", path="/tmp/clip.mp4", duration=10.0,
+            resolution=(1, 1), fps=30.0, file_size=4,
+        ),
+        scenes=[SceneSegment(start=0, end=5, murch=MurchScore(
+            scene_type="hook", aesthetic=80, credibility=80, impact=80,
+            memorability=80, fun=80, composite=80,
+        ))],
+        file_hash="x",
+    )
+
+    assignments = run(plan=plan, analyses=[analysis], backend=FakeBackend())
+    assert isinstance(assignments, EditorAssignments)
+    assert len(assignments.assignments) == 1
+    assert assignments.assignments[0].section_id == "s1"
+    assert assignments.assignments[0].picks[0].clip_path == "clip.mp4"
+    assert assignments.assignments[0].picks[0].in_point == 0.0
+    assert assignments.assignments[0].picks[0].out_point == 5.0
+
+
+def test_editor_run_clamps_in_out_points_to_scene_bounds():
+    """If the LLM picks in/out points outside the scene's range, the orchestrator clamps them."""
+    from vlogkit.models import ClipAnalysis, ClipMetadata, SceneSegment
+    from vlogkit.storyboard.agents.director import DirectorPlan, DirectorSection
+    from vlogkit.storyboard.agents.editor import run
+
+    class FakeBackend:
+        def complete(self, prompt, system=""):
+            # LLM picks in_point=99 (beyond scene end of 5) and out_point=100
+            return '{"assignments": [{"section_id": "s1", "picks": [{"clip_path": "clip.mp4", "scene_index": 0, "in_point": 99.0, "out_point": 100.0, "reason": "out of bounds"}]}]}'
+
+    plan = DirectorPlan(
+        title="T",
+        sections=[DirectorSection(id="s1", title="Open", goal="tease", target_duration=5, scene_types=["hook"])],
+    )
+    analysis = ClipAnalysis(
+        metadata=ClipMetadata(
+            filename="clip.mp4", path="/tmp/clip.mp4", duration=10.0,
+            resolution=(1, 1), fps=30.0, file_size=4,
+        ),
+        scenes=[SceneSegment(start=0, end=5)],
+        file_hash="x",
+    )
+
+    assignments = run(plan=plan, analyses=[analysis], backend=FakeBackend())
+    pick = assignments.assignments[0].picks[0]
+    # Both points clamped to the scene's [0, 5] range
+    assert 0 <= pick.in_point <= 5
+    assert 0 <= pick.out_point <= 5
+    assert pick.in_point <= pick.out_point
+
+
+def test_editor_run_raises_agent_error_on_malformed_json():
+    from vlogkit.storyboard.agents.base import AgentError
+    from vlogkit.storyboard.agents.director import DirectorPlan
+    from vlogkit.storyboard.agents.editor import run
+
+    class FakeBackend:
+        def complete(self, prompt, system=""):
+            return "garbage"
+
+    with pytest.raises(AgentError) as exc:
+        run(plan=DirectorPlan(title="T"), analyses=[], backend=FakeBackend())
+    assert exc.value.stage == "editor"
