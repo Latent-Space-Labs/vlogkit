@@ -164,3 +164,87 @@ def test_build_storyboard_polisher_failure_falls_back(tmp_path, monkeypatch):
         context="trip",
     )
     assert sb.sections[0].title == "All Clips (Chronological)"
+
+
+def test_build_storyboard_emits_agent_events_through_callback(tmp_path, monkeypatch):
+    """When event_callback is provided, build_storyboard reports each stage's start/complete."""
+    from vlogkit.config import Settings
+    from vlogkit.models import Storyboard, StoryboardSection, StoryboardSegment
+    from vlogkit.storyboard import builder as builder_module
+    from vlogkit.storyboard.agents.director import DirectorPlan
+    from vlogkit.storyboard.agents.editor import EditorAssignments
+
+    monkeypatch.setattr(
+        "vlogkit.storyboard.builder.director.run",
+        lambda **kw: DirectorPlan(title="t", sections=[]),
+    )
+    monkeypatch.setattr(
+        "vlogkit.storyboard.builder.editor.run",
+        lambda **kw: EditorAssignments(assignments=[]),
+    )
+    monkeypatch.setattr(
+        "vlogkit.storyboard.builder.polisher.run",
+        lambda **kw: Storyboard(
+            title="Final",
+            sections=[StoryboardSection(title="S", segments=[])],
+            total_duration=0.0,
+            llm_rationale="ok",
+        ),
+    )
+
+    events: list[tuple[str, str, str]] = []
+
+    def callback(event_type: str, stage: str, summary_or_reason: str = ""):
+        events.append((event_type, stage, summary_or_reason))
+
+    builder_module.build_storyboard(
+        analyses=[_make_analysis()],
+        project_root=tmp_path,
+        settings=Settings(anthropic_api_key="test-key"),
+        strategy="energy-arc",
+        context="trip",
+        event_callback=callback,
+    )
+
+    # 6 events: started + complete for each of 3 stages
+    assert [e[0] for e in events] == [
+        "agent_started", "agent_complete",
+        "agent_started", "agent_complete",
+        "agent_started", "agent_complete",
+    ]
+    assert [e[1] for e in events] == [
+        "director", "director",
+        "editor", "editor",
+        "polisher", "polisher",
+    ]
+
+
+def test_build_storyboard_emits_agent_failed_on_director_error(tmp_path, monkeypatch):
+    from vlogkit.config import Settings
+    from vlogkit.storyboard import builder as builder_module
+    from vlogkit.storyboard.agents.base import AgentError
+
+    monkeypatch.setattr(
+        "vlogkit.storyboard.builder.director.run",
+        lambda **kw: (_ for _ in ()).throw(AgentError(stage="director", reason="boom")),
+    )
+
+    events: list[tuple[str, str, str]] = []
+
+    def callback(event_type: str, stage: str, summary_or_reason: str = ""):
+        events.append((event_type, stage, summary_or_reason))
+
+    builder_module.build_storyboard(
+        analyses=[_make_analysis()],
+        project_root=tmp_path,
+        settings=Settings(anthropic_api_key="test-key"),
+        strategy="energy-arc",
+        context="trip",
+        event_callback=callback,
+    )
+
+    types_and_stages = [(e[0], e[1]) for e in events]
+    assert ("agent_started", "director") in types_and_stages
+    assert ("agent_failed", "director") in types_and_stages
+    assert all(e[1] != "editor" for e in events)
+    assert all(e[1] != "polisher" for e in events)

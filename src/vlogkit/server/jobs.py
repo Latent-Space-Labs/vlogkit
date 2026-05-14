@@ -100,6 +100,25 @@ async def run_regenerate_job(
     try:
         from vlogkit.storyboard.builder import build_storyboard
 
+        # Bridge build_storyboard's event_callback into the WS broker
+        loop = asyncio.get_running_loop()
+
+        def _agent_event_callback(event_type: str, stage: str, summary_or_reason: str = ""):
+            from vlogkit.server.schemas import (
+                StoryboardAgentComplete,
+                StoryboardAgentFailed,
+                StoryboardAgentStarted,
+            )
+            if event_type == "agent_started":
+                evt = StoryboardAgentStarted(job_id=job_id, stage=stage)
+            elif event_type == "agent_complete":
+                evt = StoryboardAgentComplete(job_id=job_id, stage=stage, summary=summary_or_reason)
+            elif event_type == "agent_failed":
+                evt = StoryboardAgentFailed(job_id=job_id, stage=stage, reason=summary_or_reason)
+            else:
+                return
+            asyncio.run_coroutine_threadsafe(broker.publish(project_id, evt), loop)
+
         analyses = project.load_all_analyses()
         sb = await asyncio.to_thread(
             build_storyboard,
@@ -108,6 +127,7 @@ async def run_regenerate_job(
             project.settings,
             strategy,
             context,
+            _agent_event_callback,
         )
         await asyncio.to_thread(project.save_storyboard, sb)
         await broker.publish(
