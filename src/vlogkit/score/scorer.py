@@ -103,11 +103,16 @@ def _transcript_for_scene(analysis: ClipAnalysis, scene_start: float, scene_end:
     return " ".join(pieces).strip()
 
 
-def run_scoring(project: Project, force: bool = False) -> int:
+def run_scoring(
+    project: Project,
+    force: bool = False,
+    progress_callback: callable | None = None,
+) -> int:
     """Score every detected scene in the project; returns the count of scenes scored.
 
-    Skips scenes whose `murch` is already set unless `force=True`. Skips entirely
-    if no API key is configured (prints a warning).
+    progress_callback, if provided, is called with:
+      - ("scene_scored", current_clip=str, current_scene_index=int, scored=int, total_scenes=int)
+      - ("clip_done", clip_filename=str, average_composite=float)
     """
     if not project.settings.anthropic_api_key:
         console.print("[yellow]No API key set; vlogkit score is a no-op. Set VLOGKIT_ANTHROPIC_API_KEY.[/]")
@@ -119,8 +124,15 @@ def run_scoring(project: Project, force: bool = False) -> int:
         return 0
 
     backend = ClaudeBackend(project.settings)
-    backend.model = project.settings.score_model  # use the dedicated scoring model
+    backend.model = project.settings.score_model
     weights = load_project_weights(project.root)
+
+    # Pre-count total scenes for progress reporting
+    total_scenes = 0
+    for clip in clips:
+        analysis = project.load_analysis(clip)
+        if analysis is not None:
+            total_scenes += len(analysis.scenes)
 
     scored_total = 0
 
@@ -165,9 +177,27 @@ def run_scoring(project: Project, force: bool = False) -> int:
                 scene.murch = score
                 mutated = True
                 scored_total += 1
+                if progress_callback is not None:
+                    progress_callback(
+                        "scene_scored",
+                        current_clip=clip.name,
+                        current_scene_index=idx,
+                        scored=scored_total,
+                        total_scenes=total_scenes,
+                    )
 
             if mutated:
                 project.save_analysis(analysis)
+                if progress_callback is not None:
+                    composites = [
+                        s.murch.composite for s in analysis.scenes if s.murch is not None
+                    ]
+                    avg = sum(composites) / len(composites) if composites else 0.0
+                    progress_callback(
+                        "clip_done",
+                        clip_filename=clip.name,
+                        average_composite=avg,
+                    )
 
     console.print(f"[green]Scored {scored_total} scene(s).[/]")
     return scored_total

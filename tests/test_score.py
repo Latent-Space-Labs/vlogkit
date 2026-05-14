@@ -407,3 +407,56 @@ def test_cli_score_command_default_force_false(tmp_path, monkeypatch):
     result = runner.invoke(app, ["score", "-p", str(tmp_path)])
     assert result.exit_code == 0, result.output
     assert captured["force"] is False
+
+
+def test_run_scoring_invokes_progress_callback_per_scene_and_per_clip(tmp_path, monkeypatch):
+    from vlogkit.config import Settings
+    from vlogkit.models import ClipAnalysis, ClipMetadata, MurchScore, SceneSegment
+    from vlogkit.project import Project
+    from vlogkit.score import scorer as scorer_module
+
+    clip = tmp_path / "clip.mp4"
+    clip.write_bytes(b"fake")
+    analysis = ClipAnalysis(
+        metadata=ClipMetadata(
+            filename="clip.mp4", path=clip, duration=10.0, resolution=(1, 1), fps=30.0, file_size=4
+        ),
+        scenes=[SceneSegment(start=0, end=5), SceneSegment(start=5, end=10)],
+        file_hash="x",
+    )
+    monkeypatch.setattr(Project, "scan_clips", lambda self: [clip])
+    monkeypatch.setattr(Project, "load_analysis", lambda self, c: analysis)
+    monkeypatch.setattr(Project, "save_analysis", lambda self, a: None)
+
+    def fake_score_scene(scene, scene_index, **kwargs):
+        return MurchScore(
+            scene_type="narrative", aesthetic=50, credibility=50, impact=50,
+            memorability=50, fun=50, composite=50.0,
+        )
+
+    monkeypatch.setattr(scorer_module, "score_scene", fake_score_scene)
+
+    class FakeBackend:
+        model = "fake"
+        def complete(self, prompt, system=""):
+            return ""
+    monkeypatch.setattr("vlogkit.score.scorer.ClaudeBackend", lambda settings: FakeBackend())
+
+    callback_calls: list[dict] = []
+
+    def progress_callback(event_type: str, **kwargs):
+        callback_calls.append({"type": event_type, **kwargs})
+
+    project = Project(tmp_path, settings=Settings(anthropic_api_key="test-key", score_model="fake"))
+    scorer_module.run_scoring(project, force=False, progress_callback=progress_callback)
+
+    types = [c["type"] for c in callback_calls]
+    assert types.count("scene_scored") == 2
+    assert types.count("clip_done") == 1
+    scene_calls = [c for c in callback_calls if c["type"] == "scene_scored"]
+    assert all("current_clip" in c for c in scene_calls)
+    assert all("current_scene_index" in c for c in scene_calls)
+    assert [c["current_scene_index"] for c in scene_calls] == [0, 1]
+    clip_done = [c for c in callback_calls if c["type"] == "clip_done"][0]
+    assert clip_done["clip_filename"] == "clip.mp4"
+    assert clip_done["average_composite"] == 50.0
