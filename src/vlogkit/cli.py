@@ -78,6 +78,22 @@ def analyze(
 
 
 @app.command()
+def score(
+    path: Annotated[Optional[Path], typer.Option("--path", "-p", help="Project directory")] = None,
+    force: Annotated[bool, typer.Option("--force", "-f", help="Re-score scenes that already have a Murch score")] = False,
+):
+    """Score every detected scene with Murch-style 5-dim weighted ratings."""
+    project = _get_project(path)
+    if not project.is_initialized():
+        console.print("[red]Not a vlogkit project. Run `vlogkit init` first.[/]")
+        raise typer.Exit(1)
+
+    from .score.scorer import run_scoring
+
+    run_scoring(project, force=force)
+
+
+@app.command()
 def storyboard(
     path: Annotated[Optional[Path], typer.Option("--path", "-p")] = None,
     strategy: Annotated[str, typer.Option("--strategy", "-s", help="chronological|energy-arc|thematic")] = "energy-arc",
