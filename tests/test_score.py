@@ -214,3 +214,156 @@ def test_score_scene_includes_neighbor_descriptions_in_prompt():
     )
     assert "opening shot of mountains" in captured_prompts[0]
     assert "closing shot of sky" in captured_prompts[0]
+
+
+def test_run_scoring_scores_all_unscored_scenes(tmp_path, monkeypatch):
+    """run_scoring iterates clips, scores each unscored scene, writes back to cache."""
+    from vlogkit.config import Settings
+    from vlogkit.models import ClipAnalysis, ClipMetadata, MurchScore, SceneSegment
+    from vlogkit.project import Project
+    from vlogkit.score import scorer as scorer_module
+
+    clip = tmp_path / "clip.mp4"
+    clip.write_bytes(b"fake")
+    analysis = ClipAnalysis(
+        metadata=ClipMetadata(
+            filename="clip.mp4", path=clip, duration=10.0, resolution=(1, 1), fps=30.0, file_size=4
+        ),
+        scenes=[SceneSegment(start=0, end=5), SceneSegment(start=5, end=10)],
+        file_hash="x",
+    )
+    monkeypatch.setattr(Project, "scan_clips", lambda self: [clip])
+    monkeypatch.setattr(Project, "load_analysis", lambda self, c: analysis)
+
+    saved: list[ClipAnalysis] = []
+    monkeypatch.setattr(Project, "save_analysis", lambda self, a: saved.append(a))
+
+    score_calls: list[int] = []
+
+    def fake_score_scene(scene, scene_index, **kwargs):
+        score_calls.append(scene_index)
+        return MurchScore(
+            scene_type="narrative", aesthetic=50, credibility=50, impact=50,
+            memorability=50, fun=50, composite=50.0,
+        )
+
+    monkeypatch.setattr(scorer_module, "score_scene", fake_score_scene)
+
+    # Stub the ClaudeBackend constructor so it doesn't try to talk to a real API
+    class FakeBackend:
+        model = "fake-model"
+        def complete(self, prompt, system=""):
+            return ""
+    monkeypatch.setattr("vlogkit.score.scorer.ClaudeBackend", lambda settings: FakeBackend())
+
+    project = Project(tmp_path, settings=Settings(anthropic_api_key="test-key", score_model="fake-model"))
+    scored_count = scorer_module.run_scoring(project, force=False)
+
+    assert scored_count == 2
+    assert score_calls == [0, 1]
+    assert len(saved) == 1
+    assert all(s.murch is not None for s in saved[0].scenes)
+
+
+def test_run_scoring_skips_already_scored_scenes_unless_forced(tmp_path, monkeypatch):
+    """By default, scenes with murch already set are skipped. --force re-scores."""
+    from vlogkit.config import Settings
+    from vlogkit.models import ClipAnalysis, ClipMetadata, MurchScore, SceneSegment
+    from vlogkit.project import Project
+    from vlogkit.score import scorer as scorer_module
+
+    clip = tmp_path / "clip.mp4"
+    clip.write_bytes(b"fake")
+    pre_scored = MurchScore(
+        scene_type="hook", aesthetic=80, credibility=80, impact=80,
+        memorability=80, fun=80, composite=80.0,
+    )
+    analysis = ClipAnalysis(
+        metadata=ClipMetadata(filename="clip.mp4", path=clip, duration=10.0, resolution=(1, 1), fps=30.0, file_size=4),
+        scenes=[SceneSegment(start=0, end=5, murch=pre_scored), SceneSegment(start=5, end=10)],
+        file_hash="x",
+    )
+    monkeypatch.setattr(Project, "scan_clips", lambda self: [clip])
+    monkeypatch.setattr(Project, "load_analysis", lambda self, c: analysis)
+    monkeypatch.setattr(Project, "save_analysis", lambda self, a: None)
+
+    score_calls: list[int] = []
+
+    def fake_score_scene(scene, scene_index, **kwargs):
+        score_calls.append(scene_index)
+        return MurchScore(
+            scene_type="narrative", aesthetic=50, credibility=50, impact=50,
+            memorability=50, fun=50, composite=50.0,
+        )
+
+    monkeypatch.setattr(scorer_module, "score_scene", fake_score_scene)
+
+    class FakeBackend:
+        model = "fake-model"
+        def complete(self, prompt, system=""):
+            return ""
+    monkeypatch.setattr("vlogkit.score.scorer.ClaudeBackend", lambda settings: FakeBackend())
+
+    settings = Settings(anthropic_api_key="test-key", score_model="fake-model")
+    project = Project(tmp_path, settings=settings)
+    scored = scorer_module.run_scoring(project, force=False)
+    assert scored == 1
+    assert score_calls == [1]  # only the unscored scene
+
+    score_calls.clear()
+    scored = scorer_module.run_scoring(project, force=True)
+    assert scored == 2
+    assert score_calls == [0, 1]
+
+
+def test_run_scoring_continues_when_a_single_scene_fails(tmp_path, monkeypatch):
+    """A ScoringError on one scene logs a warning and continues with the rest."""
+    from vlogkit.config import Settings
+    from vlogkit.models import ClipAnalysis, ClipMetadata, MurchScore, SceneSegment
+    from vlogkit.project import Project
+    from vlogkit.score import scorer as scorer_module
+    from vlogkit.score.scorer import ScoringError
+
+    clip = tmp_path / "clip.mp4"
+    clip.write_bytes(b"fake")
+    analysis = ClipAnalysis(
+        metadata=ClipMetadata(filename="clip.mp4", path=clip, duration=10.0, resolution=(1, 1), fps=30.0, file_size=4),
+        scenes=[SceneSegment(start=0, end=5), SceneSegment(start=5, end=10)],
+        file_hash="x",
+    )
+    monkeypatch.setattr(Project, "scan_clips", lambda self: [clip])
+    monkeypatch.setattr(Project, "load_analysis", lambda self, c: analysis)
+    monkeypatch.setattr(Project, "save_analysis", lambda self, a: None)
+
+    def fake_score_scene(scene, scene_index, **kwargs):
+        if scene_index == 0:
+            raise ScoringError("simulated parse failure")
+        return MurchScore(
+            scene_type="narrative", aesthetic=50, credibility=50, impact=50,
+            memorability=50, fun=50, composite=50.0,
+        )
+
+    monkeypatch.setattr(scorer_module, "score_scene", fake_score_scene)
+
+    class FakeBackend:
+        model = "fake-model"
+        def complete(self, prompt, system=""):
+            return ""
+    monkeypatch.setattr("vlogkit.score.scorer.ClaudeBackend", lambda settings: FakeBackend())
+
+    project = Project(tmp_path, settings=Settings(anthropic_api_key="test-key", score_model="fake-model"))
+    scored = scorer_module.run_scoring(project, force=False)
+    assert scored == 1
+
+
+def test_run_scoring_no_api_key_returns_zero_with_warning(tmp_path, monkeypatch):
+    """Without an API key, scoring is a no-op with a clear warning."""
+    from vlogkit.config import Settings
+    from vlogkit.project import Project
+    from vlogkit.score import scorer as scorer_module
+
+    monkeypatch.setattr(Project, "scan_clips", lambda self: [])
+
+    project = Project(tmp_path, settings=Settings(anthropic_api_key=""))
+    scored = scorer_module.run_scoring(project, force=False)
+    assert scored == 0
