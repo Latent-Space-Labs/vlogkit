@@ -3,16 +3,25 @@
 from __future__ import annotations
 
 import json
+from pathlib import Path
 from typing import Mapping
 
+from rich.console import Console
+from rich.progress import Progress, SpinnerColumn, TextColumn
+
 from ..llm.base import LLMBackend
-from ..models import MurchScore, SceneSegment
+from ..llm.claude import ClaudeBackend
+from ..models import ClipAnalysis, MurchScore, SceneSegment
+from ..project import Project
 from .prompts import SCORING_PROMPT, SYSTEM_PROMPT
-from .weights import DEFAULT_WEIGHTS, composite_score
+from .weights import DEFAULT_WEIGHTS, composite_score, load_project_weights
 
 
 class ScoringError(Exception):
     """Raised when an LLM response cannot be parsed into a MurchScore."""
+
+
+console = Console()
 
 
 def _strip_fence(text: str) -> str:
@@ -84,19 +93,6 @@ def score_scene(
         composite=composite,
         rationale=str(data.get("rationale", "")),
     )
-
-
-from pathlib import Path
-
-from rich.console import Console
-from rich.progress import Progress, SpinnerColumn, TextColumn
-
-from ..llm.claude import ClaudeBackend
-from ..models import ClipAnalysis
-from ..project import Project
-from .weights import load_project_weights
-
-console = Console()
 
 
 def _transcript_for_scene(analysis: ClipAnalysis, scene_start: float, scene_end: float) -> str:
