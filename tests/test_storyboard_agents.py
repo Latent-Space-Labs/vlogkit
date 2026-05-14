@@ -33,3 +33,122 @@ def test_parse_json_response_strips_unlabeled_fence():
 def test_parse_json_response_raises_value_error_on_garbage():
     with pytest.raises(ValueError):
         parse_json_response("this is not json")
+
+
+def test_director_run_parses_valid_response():
+    from vlogkit.config import Settings
+    from vlogkit.models import ClipAnalysis, ClipMetadata, MurchScore, SceneSegment
+    from vlogkit.storyboard.agents.director import DirectorPlan, run
+
+    captured_prompts: list[str] = []
+
+    class FakeBackend:
+        def complete(self, prompt: str, system: str = "") -> str:
+            captured_prompts.append(prompt)
+            return '{"title": "Hot Open", "sections": [{"id": "s1", "title": "Open", "goal": "tease", "target_duration": 8, "scene_types": ["hook"]}], "arc_rationale": "starts strong"}'
+
+    analysis = ClipAnalysis(
+        metadata=ClipMetadata(
+            filename="clip.mp4", path="/tmp/clip.mp4", duration=10.0,
+            resolution=(1, 1), fps=30.0, file_size=4,
+        ),
+        scenes=[
+            SceneSegment(start=0, end=5, murch=MurchScore(
+                scene_type="hook", aesthetic=80, credibility=80, impact=80,
+                memorability=80, fun=80, composite=80,
+            )),
+            SceneSegment(start=5, end=10, murch=MurchScore(
+                scene_type="narrative", aesthetic=50, credibility=50, impact=50,
+                memorability=50, fun=50, composite=50,
+            )),
+        ],
+        summary="a fun morning",
+        file_hash="x",
+    )
+
+    plan = run(
+        analyses=[analysis],
+        strategy="energy-arc",
+        context="a recent trip",
+        backend=FakeBackend(),
+    )
+    assert isinstance(plan, DirectorPlan)
+    assert plan.title == "Hot Open"
+    assert len(plan.sections) == 1
+    assert plan.sections[0].id == "s1"
+    assert plan.sections[0].scene_types == ["hook"]
+
+    # Verify the prompt mentions the strategy hint and scene-type counts
+    assert len(captured_prompts) == 1
+    prompt = captured_prompts[0]
+    assert "energy-arc" in prompt or "energy arc" in prompt.lower()
+    assert "hook" in prompt and "narrative" in prompt
+
+
+def test_director_run_handles_scenes_without_murch():
+    """When scenes lack MurchScore, scene-type counts default to 'unknown'."""
+    from vlogkit.models import ClipAnalysis, ClipMetadata, SceneSegment
+    from vlogkit.storyboard.agents.director import run
+
+    captured_prompts: list[str] = []
+
+    class FakeBackend:
+        def complete(self, prompt: str, system: str = "") -> str:
+            captured_prompts.append(prompt)
+            return '{"title": "T", "sections": [], "arc_rationale": "r"}'
+
+    analysis = ClipAnalysis(
+        metadata=ClipMetadata(
+            filename="clip.mp4", path="/tmp/clip.mp4", duration=10.0,
+            resolution=(1, 1), fps=30.0, file_size=4,
+        ),
+        scenes=[SceneSegment(start=0, end=5), SceneSegment(start=5, end=10)],
+        file_hash="x",
+    )
+
+    run(analyses=[analysis], strategy="chronological", context="trip", backend=FakeBackend())
+
+    assert "unknown" in captured_prompts[0]
+
+
+def test_director_run_raises_agent_error_on_malformed_json():
+    from vlogkit.models import ClipAnalysis, ClipMetadata
+    from vlogkit.storyboard.agents.base import AgentError
+    from vlogkit.storyboard.agents.director import run
+
+    class FakeBackend:
+        def complete(self, prompt, system=""):
+            return "this is not json"
+
+    analysis = ClipAnalysis(
+        metadata=ClipMetadata(
+            filename="clip.mp4", path="/tmp/clip.mp4", duration=10.0,
+            resolution=(1, 1), fps=30.0, file_size=4,
+        ),
+        file_hash="x",
+    )
+
+    with pytest.raises(AgentError) as exc:
+        run(analyses=[analysis], strategy="energy-arc", context="trip", backend=FakeBackend())
+    assert exc.value.stage == "director"
+
+
+def test_director_run_raises_agent_error_on_missing_fields():
+    from vlogkit.models import ClipAnalysis, ClipMetadata
+    from vlogkit.storyboard.agents.base import AgentError
+    from vlogkit.storyboard.agents.director import run
+
+    class FakeBackend:
+        def complete(self, prompt, system=""):
+            return '{"sections": []}'  # missing required title
+
+    analysis = ClipAnalysis(
+        metadata=ClipMetadata(
+            filename="clip.mp4", path="/tmp/clip.mp4", duration=10.0,
+            resolution=(1, 1), fps=30.0, file_size=4,
+        ),
+        file_hash="x",
+    )
+
+    with pytest.raises(AgentError):
+        run(analyses=[analysis], strategy="energy-arc", context="trip", backend=FakeBackend())
