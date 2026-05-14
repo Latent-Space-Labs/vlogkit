@@ -367,3 +367,43 @@ def test_run_scoring_no_api_key_returns_zero_with_warning(tmp_path, monkeypatch)
     project = Project(tmp_path, settings=Settings(anthropic_api_key=""))
     scored = scorer_module.run_scoring(project, force=False)
     assert scored == 0
+
+
+def test_cli_score_command_invokes_run_scoring(tmp_path, monkeypatch):
+    """`vlogkit score` reaches run_scoring with the right project and force flag."""
+    from typer.testing import CliRunner
+
+    from vlogkit.cli import app
+
+    captured: dict[str, object] = {}
+
+    def fake_run_scoring(project, force=False):
+        captured["force"] = force
+        captured["project_root"] = project.root
+        return 0
+
+    monkeypatch.setattr("vlogkit.score.scorer.run_scoring", fake_run_scoring)
+
+    runner = CliRunner()
+    result = runner.invoke(app, ["score", "-p", str(tmp_path), "--force"])
+    assert result.exit_code == 0, result.output
+    assert captured["force"] is True
+    assert str(captured["project_root"]) == str(tmp_path.resolve())
+
+
+def test_cli_score_command_default_force_false(tmp_path, monkeypatch):
+    """Without --force, run_scoring is called with force=False."""
+    from typer.testing import CliRunner
+
+    from vlogkit.cli import app
+
+    captured: dict[str, object] = {}
+    monkeypatch.setattr(
+        "vlogkit.score.scorer.run_scoring",
+        lambda project, force=False: captured.setdefault("force", force) or 0,
+    )
+
+    runner = CliRunner()
+    result = runner.invoke(app, ["score", "-p", str(tmp_path)])
+    assert result.exit_code == 0, result.output
+    assert captured["force"] is False
