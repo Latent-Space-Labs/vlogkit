@@ -122,6 +122,29 @@ export type StoryboardAgentEvent =
   | StoryboardAgentComplete
   | StoryboardAgentFailed;
 
+// ---- Render events (new) ----
+
+export type RenderStarted = {
+  type: "render.started";
+  job_id: string;
+  resolution: string | null;
+  captions: boolean;
+};
+export type RenderComplete = {
+  type: "render.complete";
+  job_id: string;
+  output_path: string;
+  size_bytes: number;
+  duration_s: number;
+};
+export type RenderFailed = {
+  type: "render.failed";
+  job_id: string;
+  error: string;
+};
+
+export type RenderEvent = RenderStarted | RenderComplete | RenderFailed;
+
 export type BoardEvent =
   | AnalyzeEvent
   | ScoreEvent
@@ -129,4 +152,5 @@ export type BoardEvent =
   | StoryboardRegenToken
   | StoryboardRegenComplete
   | StoryboardRegenFailed
-  | StoryboardAgentEvent;
+  | StoryboardAgentEvent
+  | RenderEvent;

@@ -159,6 +159,68 @@ class ExportResponse(BaseModel):
     size_bytes: int
 
 
+# ---- Captions ----
+
+CaptionFormat = Literal["srt", "vtt", "ass"]
+
+
+class CaptionsRequest(BaseModel):
+    format: CaptionFormat = "srt"
+
+
+class CaptionsResponse(BaseModel):
+    path: str
+    format: CaptionFormat
+    size_bytes: int
+    cue_count: int
+
+
+# ---- Tighten (silence + filler auto-cut) ----
+
+
+class TightenRequest(BaseModel):
+    dry_run: bool = False
+
+
+class TightenResponse(BaseModel):
+    original_duration: float
+    tightened_duration: float
+    removed_duration: float
+    segments_before: int
+    segments_after: int
+    saved: bool
+
+
+# ---- Render (finished MP4) ----
+
+
+class RenderRequest(BaseModel):
+    captions: bool = False
+    resolution: str | None = None   # "1080p" | "720p" | "WxH" | None=auto
+    fps: float | None = None
+
+
+class RenderStarted(BaseModel):
+    type: Literal["render.started"] = "render.started"
+    job_id: str
+    resolution: str = ""
+    captions: bool = False
+
+
+class RenderComplete(BaseModel):
+    type: Literal["render.complete"] = "render.complete"
+    job_id: str
+    output_path: str
+    size_bytes: int = 0
+    duration_s: float = 0.0
+
+
+class RenderFailed(BaseModel):
+    type: Literal["render.failed"] = "render.failed"
+    job_id: str
+    error: str
+
+
 # ---- Score job events (new) ----
 
 class ScoreStarted(BaseModel):

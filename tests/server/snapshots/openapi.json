@@ -1,6 +1,55 @@
 {
   "components": {
     "schemas": {
+      "CaptionsRequest": {
+        "properties": {
+          "format": {
+            "default": "srt",
+            "enum": [
+              "srt",
+              "vtt",
+              "ass"
+            ],
+            "title": "Format",
+            "type": "string"
+          }
+        },
+        "title": "CaptionsRequest",
+        "type": "object"
+      },
+      "CaptionsResponse": {
+        "properties": {
+          "cue_count": {
+            "title": "Cue Count",
+            "type": "integer"
+          },
+          "format": {
+            "enum": [
+              "srt",
+              "vtt",
+              "ass"
+            ],
+            "title": "Format",
+            "type": "string"
+          },
+          "path": {
+            "title": "Path",
+            "type": "string"
+          },
+          "size_bytes": {
+            "title": "Size Bytes",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "path",
+          "format",
+          "size_bytes",
+          "cue_count"
+        ],
+        "title": "CaptionsResponse",
+        "type": "object"
+      },
       "ClipAnalysisSummary": {
         "properties": {
           "scenes": {
@@ -335,6 +384,39 @@
         "title": "RegisterProjectRequest",
         "type": "object"
       },
+      "RenderRequest": {
+        "properties": {
+          "captions": {
+            "default": false,
+            "title": "Captions",
+            "type": "boolean"
+          },
+          "fps": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fps"
+          },
+          "resolution": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resolution"
+          }
+        },
+        "title": "RenderRequest",
+        "type": "object"
+      },
       "SearchHit": {
         "properties": {
           "chunk_end": {
@@ -490,6 +572,55 @@
           "clip_path"
         ],
         "title": "StoryboardSegment",
+        "type": "object"
+      },
+      "TightenRequest": {
+        "properties": {
+          "dry_run": {
+            "default": false,
+            "title": "Dry Run",
+            "type": "boolean"
+          }
+        },
+        "title": "TightenRequest",
+        "type": "object"
+      },
+      "TightenResponse": {
+        "properties": {
+          "original_duration": {
+            "title": "Original Duration",
+            "type": "number"
+          },
+          "removed_duration": {
+            "title": "Removed Duration",
+            "type": "number"
+          },
+          "saved": {
+            "title": "Saved",
+            "type": "boolean"
+          },
+          "segments_after": {
+            "title": "Segments After",
+            "type": "integer"
+          },
+          "segments_before": {
+            "title": "Segments Before",
+            "type": "integer"
+          },
+          "tightened_duration": {
+            "title": "Tightened Duration",
+            "type": "number"
+          }
+        },
+        "required": [
+          "original_duration",
+          "tightened_duration",
+          "removed_duration",
+          "segments_before",
+          "segments_after",
+          "saved"
+        ],
+        "title": "TightenResponse",
         "type": "object"
       },
       "ValidationError": {
@@ -960,6 +1091,94 @@
         "summary": "Start Analyze"
       }
     },
+    "/projects/{project_id}/captions": {
+      "post": {
+        "operationId": "captions_projects__project_id__captions_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CaptionsRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CaptionsResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDetail"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDetail"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Captions",
+        "tags": [
+          "captions"
+        ]
+      }
+    },
     "/projects/{project_id}/clips": {
       "get": {
         "operationId": "list_clips_projects__project_id__clips_get",
@@ -1194,6 +1413,88 @@
         "summary": "Export",
         "tags": [
           "export"
+        ]
+      }
+    },
+    "/projects/{project_id}/render": {
+      "post": {
+        "operationId": "start_render_projects__project_id__render_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RenderRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "title": "Response Start Render Projects  Project Id  Render Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDetail"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Start Render",
+        "tags": [
+          "render"
         ]
       }
     },
@@ -1737,6 +2038,94 @@
         "summary": "Regenerate",
         "tags": [
           "storyboard"
+        ]
+      }
+    },
+    "/projects/{project_id}/tighten": {
+      "post": {
+        "operationId": "tighten_projects__project_id__tighten_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TightenRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TightenResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDetail"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDetail"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Tighten",
+        "tags": [
+          "tighten"
         ]
       }
     }

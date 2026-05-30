@@ -15,6 +15,28 @@ type ExportRequest = components["schemas"]["ExportRequest"];
 type ExportResponse = components["schemas"]["ExportResponse"];
 type ExportFormat = ExportRequest["format"];
 
+export type CaptionFormat = "srt" | "vtt" | "ass";
+export type CaptionsResponse = {
+  path: string;
+  format: string;
+  size_bytes: number;
+  cue_count: number;
+};
+export type TightenResponse = {
+  original_duration: number;
+  tightened_duration: number;
+  removed_duration: number;
+  segments_before: number;
+  segments_after: number;
+  saved: boolean;
+};
+export type RenderResolution = string | null;
+export type RenderOptions = {
+  captions: boolean;
+  resolution: RenderResolution;
+  fps: number | null;
+};
+
 export class ApiError extends Error {
   constructor(
     public readonly status: number,
@@ -106,6 +128,21 @@ export const api = {
     request<ExportResponse>(`/projects/${projectId}/export`, {
       method: "POST",
       body: JSON.stringify(req),
+    }),
+  generateCaptions: (projectId: string, format: CaptionFormat) =>
+    request<CaptionsResponse>(`/projects/${projectId}/captions`, {
+      method: "POST",
+      body: JSON.stringify({ format }),
+    }),
+  tighten: (projectId: string, dryRun: boolean) =>
+    request<TightenResponse>(`/projects/${projectId}/tighten`, {
+      method: "POST",
+      body: JSON.stringify({ dry_run: dryRun }),
+    }),
+  startRender: (projectId: string, opts: RenderOptions) =>
+    request<{ job_id: string }>(`/projects/${projectId}/render`, {
+      method: "POST",
+      body: JSON.stringify(opts),
     }),
 };
 

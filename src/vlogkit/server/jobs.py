@@ -212,3 +212,124 @@ async def run_score_job(
             project_id,
             ScoreFailed(job_id=job_id, error=str(e)),
         )
+
+
+async def run_render_job(
+    broker: WsBroker,
+    project_id: str,
+    project: Project,
+    job_id: str,
+    captions: bool = False,
+    resolution: str | None = None,
+    fps: float | None = None,
+) -> None:
+    """Render the project's storyboard to a finished MP4, emitting WS events.
+
+    Resolves the storyboard (JSON cache, falling back to ``storyboard.md``),
+    picks an output resolution/fps (overridable via ``resolution``/``fps``),
+    optionally burns in captions, and runs the blocking ffmpeg render in a
+    worker thread. Emits ``render.started`` then ``render.complete`` on success,
+    or ``render.failed`` at any failure point.
+    """
+    from vlogkit.captions import render as render_module
+    from vlogkit.captions.render import parse_resolution, pick_render_target
+    from vlogkit.ffmpeg_util import has_libass, resolve_ffmpeg
+    from vlogkit.server.schemas import (
+        RenderComplete,
+        RenderFailed,
+        RenderStarted,
+    )
+
+    try:
+        # Resolve the storyboard: JSON cache, then markdown fallback.
+        sb = project.load_storyboard()
+        if sb is None:
+            sb_path = project.storyboard_path()
+            if sb_path.exists():
+                from vlogkit.interactive.markdown import markdown_to_storyboard
+
+                sb = markdown_to_storyboard(
+                    sb_path.read_text(), project_root=project.root
+                )
+        if sb is None:
+            await broker.publish(
+                project_id,
+                RenderFailed(job_id=job_id, error="No storyboard to render"),
+            )
+            return
+
+        analyses = project.load_all_analyses()
+
+        # Decide output resolution + fps, honoring explicit overrides.
+        target_res, target_fps = pick_render_target(sb, analyses)
+        override_res = parse_resolution(resolution)
+        if override_res is not None:
+            target_res = override_res
+        if fps is not None:
+            target_fps = fps
+
+        ffmpeg_bin = resolve_ffmpeg(project.settings.ffmpeg_path or None)
+
+        # Optional caption burn-in needs a libass-capable ffmpeg.
+        subtitle_path = None
+        if captions:
+            if not has_libass(ffmpeg_bin):
+                await broker.publish(
+                    project_id,
+                    RenderFailed(
+                        job_id=job_id,
+                        error="Captions requested but ffmpeg has no libass support",
+                    ),
+                )
+                return
+            from vlogkit.captions.pipeline import (
+                generate_caption_file,
+                load_caption_style,
+            )
+
+            subtitle_path = project.cache_dir / "captions.ass"
+            await asyncio.to_thread(
+                generate_caption_file,
+                sb,
+                analyses,
+                fmt="ass",
+                output_path=subtitle_path,
+                style=load_caption_style(project.root),
+            )
+
+        output = project.cache_dir / "render.mp4"
+        w, h = target_res
+
+        await broker.publish(
+            project_id,
+            RenderStarted(
+                job_id=job_id,
+                resolution=f"{w}x{h}",
+                captions=captions,
+            ),
+        )
+
+        await asyncio.to_thread(
+            render_module.render,
+            sb,
+            output,
+            subtitle_path=subtitle_path,
+            fps=target_fps,
+            ffmpeg_bin=ffmpeg_bin,
+            resolution=target_res,
+        )
+
+        await broker.publish(
+            project_id,
+            RenderComplete(
+                job_id=job_id,
+                output_path=str(output),
+                size_bytes=output.stat().st_size,
+                duration_s=sb.included_duration(),
+            ),
+        )
+    except Exception as e:  # noqa: BLE001 — surface any failure back to client
+        await broker.publish(
+            project_id,
+            RenderFailed(job_id=job_id, error=str(e)),
+        )

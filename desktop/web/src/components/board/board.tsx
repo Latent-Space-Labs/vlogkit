@@ -20,6 +20,9 @@ import { useSegmentReorder } from "./use-segment-reorder";
 import { InspectorDrawer } from "./inspector-drawer";
 import { RegenerateButton } from "./regenerate-button";
 import { ExportDialog } from "./export-dialog";
+import { CaptionsDialog } from "./captions-dialog";
+import { TightenButton } from "./tighten-button";
+import { RenderButton, type RenderState } from "./render-button";
 import {
   AgentProgressStepper,
   INITIAL_AGENT_STEPS,
@@ -60,6 +63,11 @@ export function Board({ projectId }: { projectId: string }) {
   const [agentSteps, setAgentSteps] = useState<AgentSteps>(INITIAL_AGENT_STEPS);
   const [showStepper, setShowStepper] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
+  const [captionsOpen, setCaptionsOpen] = useState(false);
+  const [renderJobId, setRenderJobId] = useState<string | null>(null);
+  const [renderState, setRenderState] = useState<RenderState>({
+    status: "idle",
+  });
 
   useEffect(() => {
     const dc = connectEventStream(projectId, (evt) => {
@@ -73,6 +81,23 @@ export function Board({ projectId }: { projectId: string }) {
         qc.invalidateQueries({
           queryKey: [...queryKeys.project(projectId), "storyboard"],
         });
+      }
+
+      // Render.* event routing for the active render job
+      if (
+        "job_id" in evt &&
+        renderJobId &&
+        evt.job_id === renderJobId
+      ) {
+        if (evt.type === "render.started") {
+          setRenderState({ status: "running" });
+        } else if (evt.type === "render.complete") {
+          setRenderState({ status: "done", outputPath: evt.output_path });
+          setRenderJobId(null);
+        } else if (evt.type === "render.failed") {
+          setRenderState({ status: "failed", error: evt.error });
+          setRenderJobId(null);
+        }
       }
 
       // New: storyboard.agent_* event routing for the active regenerate job
@@ -97,7 +122,7 @@ export function Board({ projectId }: { projectId: string }) {
       }
     });
     return dc;
-  }, [projectId, qc, agentJobId]);
+  }, [projectId, qc, agentJobId, renderJobId]);
 
   function handleDragEnd(evt: DragEndEvent) {
     const { active, over } = evt;
@@ -140,13 +165,28 @@ export function Board({ projectId }: { projectId: string }) {
                 </p>
               ) : null}
             </div>
-            <div className="flex gap-2">
+            <div className="flex items-center gap-2">
               <button
                 onClick={() => setExportOpen(true)}
                 className="px-3 py-1.5 rounded-[4px] font-semibold text-sm text-[var(--color-foreground)] border border-[var(--color-border-whisper)] bg-white hover:border-[var(--color-muted)]"
               >
                 Export
               </button>
+              <button
+                onClick={() => setCaptionsOpen(true)}
+                className="px-3 py-1.5 rounded-[4px] font-semibold text-sm text-[var(--color-foreground)] border border-[var(--color-border-whisper)] bg-white hover:border-[var(--color-muted)]"
+              >
+                Captions
+              </button>
+              <TightenButton projectId={projectId} />
+              <RenderButton
+                projectId={projectId}
+                state={renderState}
+                onJobStarted={(jobId) => {
+                  setRenderJobId(jobId);
+                  setRenderState({ status: "running" });
+                }}
+              />
               <RegenerateButton
                 projectId={projectId}
                 inFlight={regenInFlight}
@@ -159,6 +199,15 @@ export function Board({ projectId }: { projectId: string }) {
               />
             </div>
           </div>
+          {renderState.status === "done" ? (
+            <p className="mb-4 text-sm text-green-700 break-all">
+              ✓ Rendered to {renderState.outputPath}
+            </p>
+          ) : renderState.status === "failed" ? (
+            <p className="mb-4 text-sm text-red-600">
+              Render failed: {renderState.error}
+            </p>
+          ) : null}
           {showStepper && (
             <div className="mb-4">
               <AgentProgressStepper
@@ -209,6 +258,12 @@ export function Board({ projectId }: { projectId: string }) {
           projectId={projectId}
           projectName={data.title || "storyboard"}
           onClose={() => setExportOpen(false)}
+        />
+      ) : null}
+      {captionsOpen ? (
+        <CaptionsDialog
+          projectId={projectId}
+          onClose={() => setCaptionsOpen(false)}
         />
       ) : null}
     </>

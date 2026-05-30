@@ -22,6 +22,10 @@ class Settings(BaseSettings):
     whisper_model: str = "base"
     whisper_device: str = "auto"
 
+    # Path to an ffmpeg binary. Leave blank to auto-resolve (prefers a libass
+    # build for caption burn-in). VLOGKIT_FFMPEG.
+    ffmpeg_path: str = ""
+
     video_extensions: list[str] = Field(
         default=[".mp4", ".mov", ".avi", ".mkv", ".mts", ".m4v", ".webm"]
     )
